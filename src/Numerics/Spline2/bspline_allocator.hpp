@@ -20,6 +20,11 @@
 #include "Numerics/Spline2/einspline_allocator.h"
 #include <Numerics/OhmmsPETE/OhmmsArray.h>
 
+//DEBUG CODE ************************************
+#include <fcntl.h>
+#include <sys/mman.h>
+//DEBUG CODE ************************************
+
 namespace qmcplusplus
 {
 namespace einspline
@@ -44,8 +49,20 @@ public:
 
   template <typename SplineType> void destroy(SplineType *spline)
   {
-    einspline_free(spline->coefs);
-    free(spline);
+    //einspline_free(spline->coefs); DEBUG COMMENTED OUT
+    //free(spline); DEBUG COMMENTED OUT
+    //DEBUG CODE ****************************************************
+    if (munmap(spline->coefs, sizeof(double) * spline->coefs_size) == -1) {
+      perror("Error un-mmapping the file");
+    }
+
+    if (munmap(spline, sizeof(multi_UBspline_3d_d)) == -1) {
+      perror("Error un-mmapping the file");
+    }
+
+    remove("mmapped.bin");
+    remove("coef.bin");
+    //END DEBUG CODE ************************************************
   }
 
   /// allocate a single multi-bspline
