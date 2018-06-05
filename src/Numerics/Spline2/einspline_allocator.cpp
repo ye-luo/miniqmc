@@ -68,7 +68,7 @@ void *einspline_alloc(size_t size, size_t alignment)
   }
 
   void * coefs = mmap(0, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-  if (mmap == MAP_FAILED )
+  if (coefs == MAP_FAILED )
   {
     close(fd);
     fprintf(stderr, "Error mapping file");
@@ -251,7 +251,7 @@ einspline_create_multi_UBspline_3d_d(Ugrid x_grid, Ugrid y_grid, Ugrid z_grid,
   }
 
   multi_UBspline_3d_d *restrict spline = (multi_UBspline_3d_d *)mmap(0, sizeof(multi_UBspline_3d_d), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-  if (mmap == MAP_FAILED ) 
+  if (spline == MAP_FAILED ) 
   {
     close(fd);
     fprintf(stderr, "Error mapping file");

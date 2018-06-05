@@ -49,8 +49,8 @@ public:
 
   template <typename SplineType> void destroy(SplineType *spline)
   {
-    //einspline_free(spline->coefs); DEBUG COMMENTED OUT
-    //free(spline); DEBUG COMMENTED OUT
+    //einspline_free(spline->coefs);
+    //free(spline); 
     //DEBUG CODE ****************************************************
     if (munmap(spline->coefs, sizeof(double) * spline->coefs_size) == -1) {
       perror("Error un-mmapping the file");
