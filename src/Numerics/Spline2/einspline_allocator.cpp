@@ -29,12 +29,61 @@
 #include "Numerics/Einspline/bspline.h"
 #include "Numerics/Spline2/einspline_allocator.h"
 
+// Debug code ******************************************
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+#include <fcntl.h>
+#include <sys/mman.h>
+// End debug code **************************************
+
 #if defined(__INTEL_COMPILER)
 
 void *einspline_alloc(size_t size, size_t alignment)
 {
-  return _mm_malloc(size, alignment);
+  // Debug code ******************************
+  int fd, result;
+  fd = open("coef.bin", O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600);
+  if (fd == -1 )
+  {
+    perror("Error opening file for writing");
+    exit(EXIT_FAILURE);
+  }
+
+  result = lseek(fd, size, SEEK_SET);
+  if (result == -1 )
+  {
+    close(fd);
+    fprintf(stderr, "Error calling lseek() to 'stretch' the file");
+    exit(EXIT_FAILURE);
+  }
+
+  result = write(fd, "", 1);
+  if (result == -1 )
+  {
+    close(fd);
+    fprintf(stderr, "Error writing last byte of file");
+    exit(EXIT_FAILURE);
+  }
+
+  void * coefs = mmap(0, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+  if (mmap == MAP_FAILED )
+  {
+    close(fd);
+    fprintf(stderr, "Error mapping file");
+    exit(EXIT_FAILURE);
+  }
+
+  close(fd);
+
+  return coefs;
 }
+/*
+void *einspline_alloc(size_t size, size_t alignment)
+{
+  return _mm_malloc(size, alignment);
+}*/
 
 void einspline_free(void *ptr) { _mm_free(ptr); }
 
@@ -80,7 +129,7 @@ void einspline_free(void *aligned)
 multi_UBspline_3d_s *
 einspline_create_multi_UBspline_3d_s(Ugrid x_grid, Ugrid y_grid, Ugrid z_grid,
                                      BCtype_s xBC, BCtype_s yBC, BCtype_s zBC,
-                                     int num_splines)
+                                     int num_splines, bool ssd)
 {
   // Create new spline
   multi_UBspline_3d_s *restrict spline = (multi_UBspline_3d_s *)malloc(sizeof(multi_UBspline_3d_s));
@@ -173,7 +222,44 @@ einspline_create_multi_UBspline_3d_d(Ugrid x_grid, Ugrid y_grid, Ugrid z_grid,
                                      int num_splines)
 {
   // Create new spline
-  multi_UBspline_3d_d *restrict spline = (multi_UBspline_3d_d *)malloc(sizeof(multi_UBspline_3d_d));
+  //multi_UBspline_3d_d *restrict spline = (multi_UBspline_3d_d *)malloc(sizeof(multi_UBspline_3d_d));
+  //Debug code *******************************
+  //#define FILEPATH "/sandbox/bprotano/miniqmc/build/bin/mmapped.bin"
+
+  int fd, result;
+  fd = open("mmapped.bin", O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600);
+  if (fd == -1 )
+  {
+    perror("Error opening file for writing");
+    exit(EXIT_FAILURE);
+  }
+
+  result = lseek(fd, sizeof(multi_UBspline_3d_d), SEEK_SET);
+  if (result == -1 ) 
+  {
+    close(fd);
+    fprintf(stderr, "Error calling lseek() to 'stretch' the file");
+    exit(EXIT_FAILURE);
+  }
+
+  result = write(fd, "", 1);
+  if (result == -1 ) 
+  {
+    close(fd);
+    fprintf(stderr, "Error writing last byte of file");
+    exit(EXIT_FAILURE);
+  }
+
+  multi_UBspline_3d_d *restrict spline = (multi_UBspline_3d_d *)mmap(0, sizeof(multi_UBspline_3d_d), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+  if (mmap == MAP_FAILED ) 
+  {
+    close(fd);
+    fprintf(stderr, "Error mapping file");
+    exit(EXIT_FAILURE);
+  }
+
+  close(fd);
+  //Debug code *******************************
 
   if (!spline)
   {
