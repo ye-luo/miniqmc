@@ -129,7 +129,7 @@ void einspline_free(void *aligned)
 multi_UBspline_3d_s *
 einspline_create_multi_UBspline_3d_s(Ugrid x_grid, Ugrid y_grid, Ugrid z_grid,
                                      BCtype_s xBC, BCtype_s yBC, BCtype_s zBC,
-                                     int num_splines, bool ssd)
+                                     int num_splines)
 {
   // Create new spline
   multi_UBspline_3d_s *restrict spline = (multi_UBspline_3d_s *)malloc(sizeof(multi_UBspline_3d_s));
