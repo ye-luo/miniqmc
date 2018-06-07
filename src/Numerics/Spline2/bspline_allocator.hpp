@@ -60,8 +60,8 @@ public:
       perror("Error un-mmapping the file");
     }
 
-    remove("mmapped.bin");
-    remove("coef.bin");
+    remove("/local/scratch/mmapped.bin");
+    remove("/local/scratch/coef.bin");
     //END DEBUG CODE ************************************************
   }
 

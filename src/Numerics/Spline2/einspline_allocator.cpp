@@ -44,7 +44,7 @@ void *einspline_alloc(size_t size, size_t alignment)
 {
   // Debug code ******************************
   int fd, result;
-  fd = open("coef.bin", O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600);
+  fd = open("/local/scratch/coef.bin", O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600);
   if (fd == -1 )
   {
     perror("Error opening file for writing");
@@ -71,7 +71,7 @@ void *einspline_alloc(size_t size, size_t alignment)
   if (coefs == MAP_FAILED )
   {
     close(fd);
-    fprintf(stderr, "Error mapping file");
+    perror("Error mapping coefs");
     exit(EXIT_FAILURE);
   }
 
@@ -83,8 +83,8 @@ void *einspline_alloc(size_t size, size_t alignment)
 void *einspline_alloc(size_t size, size_t alignment)
 {
   return _mm_malloc(size, alignment);
-}*/
-
+}
+*/
 void einspline_free(void *ptr) { _mm_free(ptr); }
 
 #elif defined(HAVE_POSIX_MEMALIGN)
@@ -227,7 +227,7 @@ einspline_create_multi_UBspline_3d_d(Ugrid x_grid, Ugrid y_grid, Ugrid z_grid,
   //#define FILEPATH "/sandbox/bprotano/miniqmc/build/bin/mmapped.bin"
 
   int fd, result;
-  fd = open("mmapped.bin", O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600);
+  fd = open("/local/scratch/mmapped.bin", O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600);
   if (fd == -1 )
   {
     perror("Error opening file for writing");
@@ -238,7 +238,7 @@ einspline_create_multi_UBspline_3d_d(Ugrid x_grid, Ugrid y_grid, Ugrid z_grid,
   if (result == -1 ) 
   {
     close(fd);
-    fprintf(stderr, "Error calling lseek() to 'stretch' the file");
+    perror("Error calling lseek() to 'stretch' the file");
     exit(EXIT_FAILURE);
   }
 
@@ -246,7 +246,7 @@ einspline_create_multi_UBspline_3d_d(Ugrid x_grid, Ugrid y_grid, Ugrid z_grid,
   if (result == -1 ) 
   {
     close(fd);
-    fprintf(stderr, "Error writing last byte of file");
+    perror("Error writing last byte of file");
     exit(EXIT_FAILURE);
   }
 
@@ -254,7 +254,7 @@ einspline_create_multi_UBspline_3d_d(Ugrid x_grid, Ugrid y_grid, Ugrid z_grid,
   if (spline == MAP_FAILED ) 
   {
     close(fd);
-    fprintf(stderr, "Error mapping file");
+    perror("Error mapping file");
     exit(EXIT_FAILURE);
   }
 
