@@ -135,13 +135,13 @@ struct einspline_spo
       einsplines.resize(nBlocks);
       RandomGenerator<T> myrandom(11);
       Array<T, 3> coef_data(nx+3, ny+3, nz+3);
+      myrandom.generate_uniform(coef_data.data(), coef_data.size());
       for (int i = 0; i < nBlocks; ++i)
       {
         einsplines[i] = myAllocator.createMultiBspline(T(0), start, end, ng, PERIODIC, nSplinesPerBlock);
         if (init_random) {
           for (int j = 0; j < nSplinesPerBlock; ++j) {
             // Generate different coefficients for each orbital
-            myrandom.generate_uniform(coef_data.data(), coef_data.size());
             myAllocator.setCoefficientsForOneOrbital(j, coef_data, einsplines[i]);
           }
         }

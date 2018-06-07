@@ -50,19 +50,14 @@ public:
   template <typename SplineType> void destroy(SplineType *spline)
   {
     //einspline_free(spline->coefs);
-    //free(spline); 
     //DEBUG CODE ****************************************************
     if (munmap(spline->coefs, sizeof(double) * spline->coefs_size) == -1) {
       perror("Error un-mmapping the file");
     }
 
-    if (munmap(spline, sizeof(multi_UBspline_3d_d)) == -1) {
-      perror("Error un-mmapping the file");
-    }
-
-    remove("/local/scratch/mmapped.bin");
     remove("/local/scratch/coef.bin");
     //END DEBUG CODE ************************************************
+    free(spline); 
   }
 
   /// allocate a single multi-bspline
