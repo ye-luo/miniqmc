@@ -100,7 +100,9 @@ struct einspline_spo
   {
     if (Owner)
       for (int i = 0; i < nBlocks; ++i)
-        myAllocator.destroy(einsplines[i]);
+//DEBUG ADDED TILE
+        myAllocator.destroy(einsplines[i], i);
+        //myAllocator.destroy(einsplines[i]);
   }
 
   /// resize the containers
@@ -135,10 +137,13 @@ struct einspline_spo
       einsplines.resize(nBlocks);
       RandomGenerator<T> myrandom(11);
       Array<T, 3> coef_data(nx+3, ny+3, nz+3);
+//DEBUG MOVED OUT OF NESTED FOR LOOP ***********************************************************************
       myrandom.generate_uniform(coef_data.data(), coef_data.size());
       for (int i = 0; i < nBlocks; ++i)
       {
-        einsplines[i] = myAllocator.createMultiBspline(T(0), start, end, ng, PERIODIC, nSplinesPerBlock);
+//DEBUG ADDED TILE *****************************************************************************************
+        einsplines[i] = myAllocator.createMultiBspline(T(0), start, end, ng, PERIODIC, nSplinesPerBlock, i);
+        //einsplines[i] = myAllocator.createMultiBspline(T(0), start, end, ng, PERIODIC, nSplinesPerBlock);
         if (init_random) {
           for (int j = 0; j < nSplinesPerBlock; ++j) {
             // Generate different coefficients for each orbital

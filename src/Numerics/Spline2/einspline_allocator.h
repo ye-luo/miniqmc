@@ -26,6 +26,8 @@
 #ifndef EINSPLINE_ALIGNED_ALLOC_H
 #define EINSPLINE_ALIGNED_ALLOC_H
 
+//DEBUG USED ********************************************
+void *einspline_alloc(size_t size, size_t alignment, int tile);
 
 void *einspline_alloc(size_t size, size_t alignment);
 

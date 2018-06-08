@@ -40,11 +40,12 @@
 
 #if defined(__INTEL_COMPILER)
 
-void *einspline_alloc(size_t size, size_t alignment)
+// Debug code *********************************************************************
+void *einspline_alloc(size_t size, size_t alignment, int tile)
 {
-  // Debug code ******************************
   int fd, result;
-  fd = open("/local/scratch/coef.bin", O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600);
+  std::string fileName = "/local/scratch/coef" + std::to_string(tile) + ".bin";
+  fd = open(fileName.c_str(), O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600);
   if (fd == -1 )
   {
     perror("Error opening file for writing");
@@ -79,12 +80,13 @@ void *einspline_alloc(size_t size, size_t alignment)
 
   return coefs;
 }
-/*
+// DEBUG END DUPE ****************************************************************
+
 void *einspline_alloc(size_t size, size_t alignment)
 {
   return _mm_malloc(size, alignment);
 }
-*/
+
 void einspline_free(void *ptr) { _mm_free(ptr); }
 
 #elif defined(HAVE_POSIX_MEMALIGN)
@@ -215,6 +217,81 @@ einspline_create_multi_UBspline_3d_s(Ugrid x_grid, Ugrid y_grid, Ugrid z_grid,
 
   return spline;
 }
+
+//DEBUG USED *****************************************************************************************
+multi_UBspline_3d_d *
+einspline_create_multi_UBspline_3d_d(Ugrid x_grid, Ugrid y_grid, Ugrid z_grid,
+                                     BCtype_d xBC, BCtype_d yBC, BCtype_d zBC,
+                                     int num_splines, int tile)
+{
+  // Create new spline
+  multi_UBspline_3d_d *restrict spline = (multi_UBspline_3d_d *)malloc(sizeof(multi_UBspline_3d_d));
+
+  if (!spline)
+  {
+    fprintf(stderr,
+            "Out of memory allocating spline in create_multi_UBspline_3d_d.\n");
+    abort();
+  }
+  spline->spcode      = MULTI_U3D;
+  spline->tcode       = DOUBLE_REAL;
+  spline->xBC         = xBC;
+  spline->yBC         = yBC;
+  spline->zBC         = zBC;
+  spline->num_splines = num_splines;
+
+  // Setup internal variables
+  int Mx = x_grid.num;
+  int My = y_grid.num;
+  int Mz = z_grid.num;
+  int Nx, Ny, Nz;
+
+  if (xBC.lCode == PERIODIC || xBC.lCode == ANTIPERIODIC)
+    Nx = Mx + 3;
+  else
+    Nx             = Mx + 2;
+  x_grid.delta     = (x_grid.end - x_grid.start) / (double)(Nx - 3);
+  x_grid.delta_inv = 1.0 / x_grid.delta;
+  spline->x_grid   = x_grid;
+
+  if (yBC.lCode == PERIODIC || yBC.lCode == ANTIPERIODIC)
+    Ny = My + 3;
+  else
+    Ny             = My + 2;
+  y_grid.delta     = (y_grid.end - y_grid.start) / (double)(Ny - 3);
+  y_grid.delta_inv = 1.0 / y_grid.delta;
+  spline->y_grid   = y_grid;
+
+  if (zBC.lCode == PERIODIC || zBC.lCode == ANTIPERIODIC)
+    Nz = Mz + 3;
+  else
+    Nz             = Mz + 2;
+  z_grid.delta     = (z_grid.end - z_grid.start) / (double)(Nz - 3);
+  z_grid.delta_inv = 1.0 / z_grid.delta;
+  spline->z_grid   = z_grid;
+
+  const int ND = QMC_CLINE / sizeof(double);
+  int N =
+      (num_splines % ND) ? (num_splines + ND - num_splines % ND) : num_splines;
+
+  spline->x_stride = (size_t)Ny * (size_t)Nz * (size_t)N;
+  spline->y_stride = Nz * N;
+  spline->z_stride = N;
+
+  spline->coefs_size = (size_t)Nx * spline->x_stride;
+  spline->coefs =
+      (double *)einspline_alloc(sizeof(double) * spline->coefs_size, QMC_CLINE, tile);
+
+  if (!spline->coefs)
+  {
+    fprintf(stderr, "Out of memory allocating spline coefficients in "
+                    "create_multi_UBspline_3d_d.\n");
+    abort();
+  }
+
+  return spline;
+}
+//END DEBUG DUPE ************************************************************************************
 
 multi_UBspline_3d_d *
 einspline_create_multi_UBspline_3d_d(Ugrid x_grid, Ugrid y_grid, Ugrid z_grid,
