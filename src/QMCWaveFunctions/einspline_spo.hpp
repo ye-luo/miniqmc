@@ -101,7 +101,7 @@ struct einspline_spo
     if (Owner)
       for (int i = 0; i < nBlocks; ++i)
 //DEBUG ADDED TILE
-        myAllocator.destroy(einsplines[i], i);
+        myAllocator.destroy(einsplines[i], myAllocator.splines[i].fileName);
         //myAllocator.destroy(einsplines[i]);
   }
 
@@ -123,6 +123,7 @@ struct einspline_spo
   void set(int nx, int ny, int nz, int num_splines, int nblocks,
            bool init_random = true)
   {
+    std::string fileName = "";
     nSplines         = num_splines;
     nBlocks          = nblocks;
     nSplinesPerBlock = num_splines / nblocks;
@@ -142,7 +143,8 @@ struct einspline_spo
       for (int i = 0; i < nBlocks; ++i)
       {
 //DEBUG ADDED TILE *****************************************************************************************
-        einsplines[i] = myAllocator.createMultiBspline(T(0), start, end, ng, PERIODIC, nSplinesPerBlock, i);
+        fileName = "/local/scratch/coef" + std::to_string(i) + ".bin";
+        einsplines[i] = myAllocator.createMultiBspline(T(0), start, end, ng, PERIODIC, nSplinesPerBlock, fileName);
         //einsplines[i] = myAllocator.createMultiBspline(T(0), start, end, ng, PERIODIC, nSplinesPerBlock);
         if (init_random) {
           for (int j = 0; j < nSplinesPerBlock; ++j) {

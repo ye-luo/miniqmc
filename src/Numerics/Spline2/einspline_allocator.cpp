@@ -41,42 +41,47 @@
 #if defined(__INTEL_COMPILER)
 
 // Debug code *********************************************************************
-void *einspline_alloc(size_t size, size_t alignment, int tile)
+void *einspline_alloc(size_t size, size_t alignment, std::string fileName)
 {
-  int fd, result;
-  std::string fileName = "/local/scratch/coef" + std::to_string(tile) + ".bin";
-  fd = open(fileName.c_str(), O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600);
-  if (fd == -1 )
+  void * coefs = nullptr;
+  if (fileName == "")
+    coefs = _mm_malloc(size, alignment);
+  else
   {
-    perror("Error opening file for writing");
-    exit(EXIT_FAILURE);
-  }
+    int fd, result;
+    fd = open(fileName.c_str(), O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600);
+    if (fd == -1 )
+    {
+      perror("Error opening file for writing");
+      exit(EXIT_FAILURE);
+    }
 
-  result = lseek(fd, size, SEEK_SET);
-  if (result == -1 )
-  {
+    result = lseek(fd, size, SEEK_SET);
+    if (result == -1 )
+    {
+      close(fd);
+      perror("Error calling lseek() to 'stretch' the file");
+      exit(EXIT_FAILURE);
+    }
+
+    result = write(fd, "", 1);
+    if (result == -1 )
+    {
+      close(fd);
+      perror("Error writing last byte of file");
+      exit(EXIT_FAILURE);
+    }
+
+    coefs = mmap(0, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    if (coefs == MAP_FAILED )
+    {
+      close(fd);
+      perror("Error mapping coefs");
+      exit(EXIT_FAILURE);
+    }
+
     close(fd);
-    fprintf(stderr, "Error calling lseek() to 'stretch' the file");
-    exit(EXIT_FAILURE);
   }
-
-  result = write(fd, "", 1);
-  if (result == -1 )
-  {
-    close(fd);
-    fprintf(stderr, "Error writing last byte of file");
-    exit(EXIT_FAILURE);
-  }
-
-  void * coefs = mmap(0, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-  if (coefs == MAP_FAILED )
-  {
-    close(fd);
-    perror("Error mapping coefs");
-    exit(EXIT_FAILURE);
-  }
-
-  close(fd);
 
   return coefs;
 }
@@ -222,7 +227,7 @@ einspline_create_multi_UBspline_3d_s(Ugrid x_grid, Ugrid y_grid, Ugrid z_grid,
 multi_UBspline_3d_d *
 einspline_create_multi_UBspline_3d_d(Ugrid x_grid, Ugrid y_grid, Ugrid z_grid,
                                      BCtype_d xBC, BCtype_d yBC, BCtype_d zBC,
-                                     int num_splines, int tile)
+                                     int num_splines, std::string fileName)
 {
   // Create new spline
   multi_UBspline_3d_d *restrict spline = (multi_UBspline_3d_d *)malloc(sizeof(multi_UBspline_3d_d));
@@ -279,8 +284,13 @@ einspline_create_multi_UBspline_3d_d(Ugrid x_grid, Ugrid y_grid, Ugrid z_grid,
   spline->z_stride = N;
 
   spline->coefs_size = (size_t)Nx * spline->x_stride;
+//DEBUG CHECK SIZE OF COEFS TO DECIDE TO PUT ON SSD *********************************************
+  if ((sizeof(double) * spline->coefs_size) < 100000)
+  {
+    fileName = "";
+  }
   spline->coefs =
-      (double *)einspline_alloc(sizeof(double) * spline->coefs_size, QMC_CLINE, tile);
+      (double *)einspline_alloc(sizeof(double) * spline->coefs_size, QMC_CLINE, fileName);
 
   if (!spline->coefs)
   {
@@ -292,7 +302,7 @@ einspline_create_multi_UBspline_3d_d(Ugrid x_grid, Ugrid y_grid, Ugrid z_grid,
   return spline;
 }
 //END DEBUG DUPE ************************************************************************************
-
+/*
 multi_UBspline_3d_d *
 einspline_create_multi_UBspline_3d_d(Ugrid x_grid, Ugrid y_grid, Ugrid z_grid,
                                      BCtype_d xBC, BCtype_d yBC, BCtype_d zBC,
@@ -365,7 +375,7 @@ einspline_create_multi_UBspline_3d_d(Ugrid x_grid, Ugrid y_grid, Ugrid z_grid,
 
   return spline;
 }
-
+*/
 UBspline_3d_d *einspline_create_UBspline_3d_d(Ugrid x_grid, Ugrid y_grid,
                                               Ugrid z_grid, BCtype_d xBC,
                                               BCtype_d yBC, BCtype_d zBC)

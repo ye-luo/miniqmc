@@ -30,6 +30,13 @@ namespace qmcplusplus
 namespace einspline
 {
 
+//DEBUG TESTin ***********************************************************
+struct SplineInfo {
+  std::string fileName;
+  multi_UBspline_3d_d * ptr;
+  size_t size;
+};
+
 class Allocator
 {
   /// Setting the allocation policy: default is using aligned allocator
@@ -38,6 +45,8 @@ class Allocator
 public:
   /// constructor
   Allocator();
+//DEBUG *******************************************************************
+  std::vector<SplineInfo> splines;
 #if (__cplusplus >= 201103L)
   /// disable copy constructor
   Allocator(const Allocator &) = delete;
@@ -48,27 +57,28 @@ public:
   ~Allocator();
 
 //DEBUG USED *******************************************************************
-  template <typename SplineType> void destroy(SplineType *spline, int tile)
+  template <typename SplineType> void destroy(SplineType *spline, std::string fileName)
   {
-    std::string fileName = "/local/scratch/coef" + std::to_string(tile) + ".bin";
-    //einspline_free(spline->coefs);
-    //DEBUG CODE ****************************************************
-    if (munmap(spline->coefs, sizeof(double) * spline->coefs_size) == -1) {
-      perror("Error un-mmapping the file");
+    if (fileName == "")
+      einspline_free(spline->coefs);
+    else
+    {
+      if (munmap(spline->coefs, sizeof(double) * spline->coefs_size) == -1)
+        perror("Error un-mmapping the file");
+
+      //remove(fileName.c_str());
     }
 
-    remove(fileName.c_str());
-    //END DEBUG CODE ************************************************
     free(spline);
   }
 //END DEBUG *********************************************************************
-
+/*
   template <typename SplineType> void destroy(SplineType *spline)
   {
     einspline_free(spline->coefs);
     free(spline); 
   }
-
+*/
   /// allocate a single multi-bspline
   multi_UBspline_3d_s *allocateMultiBspline(Ugrid x_grid, Ugrid y_grid,
                                             Ugrid z_grid, BCtype_s xBC,
@@ -79,15 +89,15 @@ public:
   multi_UBspline_3d_d *allocateMultiBspline(Ugrid x_grid, Ugrid y_grid,
                                             Ugrid z_grid, BCtype_d xBC,
                                             BCtype_d yBC, BCtype_d zBC,
-                                            int num_splines, int tile);
+                                            int num_splines, std::string fileName);
 //END DEBUG DUPE **********************************************************
-
+/*
   /// allocate a double multi-bspline
   multi_UBspline_3d_d *allocateMultiBspline(Ugrid x_grid, Ugrid y_grid,
                                             Ugrid z_grid, BCtype_d xBC,
                                             BCtype_d yBC, BCtype_d zBC,
                                             int num_splines);
-
+*/
   /// allocate a single bspline
   UBspline_3d_s *allocateUBspline(Ugrid x_grid, Ugrid y_grid, Ugrid z_grid,
                                   BCtype_s xBC, BCtype_s yBC, BCtype_s zBC);
@@ -100,19 +110,19 @@ public:
   template <typename T, typename ValT, typename IntT>
   typename bspline_traits<T, 3>::SplineType *
   createMultiBspline(T dummy, ValT &start, ValT &end, IntT &ng, bc_code bc,
-                     int num_splines, int tile);
+                     int num_splines, std::string fileName);
 //DEBUG END DUPE ***************************************************************
 
   /** allocate a multi_UBspline_3d_(s,d)
    * @tparam T datatype
    * @tparam ValT 3D container for start and end
    * @tparam IntT 3D container for ng
-   */
+   *
   template <typename T, typename ValT, typename IntT>
   typename bspline_traits<T, 3>::SplineType *
   createMultiBspline(T dummy, ValT &start, ValT &end, IntT &ng, bc_code bc,
                      int num_splines);
-
+*/
   /** allocate a UBspline_3d_(s,d)
    * @tparam T datatype
    * @tparam ValT 3D container for start and end
@@ -161,8 +171,9 @@ void Allocator::setCoefficientsForOneOrbital(int i, Array<T,3> &coeff, typename 
 template <typename T, typename ValT, typename IntT>
 typename bspline_traits<T, 3>::SplineType *
 Allocator::createMultiBspline(T dummy, ValT &start, ValT &end, IntT &ng,
-                              bc_code bc, int num_splines, int tile)
+                              bc_code bc, int num_splines, std::string fileName)
 {
+  SplineInfo currSpline;
   Ugrid x_grid, y_grid, z_grid;
   typename bspline_traits<T, 3>::BCType xBC, yBC, zBC;
   x_grid.start = start[0];
@@ -177,11 +188,23 @@ Allocator::createMultiBspline(T dummy, ValT &start, ValT &end, IntT &ng,
   xBC.lCode = xBC.rCode = bc;
   yBC.lCode = yBC.rCode = bc;
   zBC.lCode = zBC.rCode = bc;
-  return allocateMultiBspline(x_grid, y_grid, z_grid, xBC, yBC, zBC,
-                              num_splines, tile);
+
+  multi_UBspline_3d_d * splinePtr = allocateMultiBspline(x_grid, y_grid, z_grid, xBC, yBC, zBC,
+                              num_splines, fileName);
+  currSpline.size = splinePtr->coefs_size;
+  if ((sizeof(double) * currSpline.size) < 100000)
+  {
+    fileName = "";
+  }
+  currSpline.fileName = fileName;
+  currSpline.ptr = splinePtr;
+  splines.push_back(currSpline);
+  
+ 
+  return splinePtr;
 }
 //END DEBUG DUPE ***********************************************************
-
+/*
 template <typename T, typename ValT, typename IntT>
 typename bspline_traits<T, 3>::SplineType *
 Allocator::createMultiBspline(T dummy, ValT &start, ValT &end, IntT &ng,
@@ -204,7 +227,7 @@ Allocator::createMultiBspline(T dummy, ValT &start, ValT &end, IntT &ng,
   return allocateMultiBspline(x_grid, y_grid, z_grid, xBC, yBC, zBC,
                               num_splines);
 }
-
+*/
 template <typename ValT, typename IntT, typename T>
 typename bspline_traits<T, 3>::SingleSplineType *
 Allocator::createUBspline(ValT &start, ValT &end, IntT &ng, bc_code bc)

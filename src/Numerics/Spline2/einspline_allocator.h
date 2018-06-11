@@ -27,7 +27,7 @@
 #define EINSPLINE_ALIGNED_ALLOC_H
 
 //DEBUG USED ********************************************
-void *einspline_alloc(size_t size, size_t alignment, int tile);
+void *einspline_alloc(size_t size, size_t alignment, std::string fileName);
 
 void *einspline_alloc(size_t size, size_t alignment);
 
