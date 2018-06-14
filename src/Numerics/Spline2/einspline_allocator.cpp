@@ -284,11 +284,6 @@ einspline_create_multi_UBspline_3d_d(Ugrid x_grid, Ugrid y_grid, Ugrid z_grid,
   spline->z_stride = N;
 
   spline->coefs_size = (size_t)Nx * spline->x_stride;
-//DEBUG CHECK SIZE OF COEFS TO DECIDE TO PUT ON SSD *********************************************
-  if ((sizeof(double) * spline->coefs_size) < 100000)
-  {
-    fileName = "";
-  }
   spline->coefs =
       (double *)einspline_alloc(sizeof(double) * spline->coefs_size, QMC_CLINE, fileName);
 

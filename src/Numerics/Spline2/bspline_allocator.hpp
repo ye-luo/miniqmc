@@ -39,6 +39,9 @@ struct SplineInfo {
 
 class Allocator
 {
+private:
+  /// Setting the allocation to move to disk: default is zero
+  int MemoryThreshold;
   /// Setting the allocation policy: default is using aligned allocator
   int Policy;
 
@@ -150,6 +153,11 @@ public:
   template <typename UBT, typename MBT>
   void copy(UBT *single, MBT *multi, int i, const int *offset, const int *N);
 
+  /** checka the memory
+  */
+  bool countMemory(multi_UBspline_3d_d *spline, std::string& fileName);
+  void storeSpline(multi_UBspline_3d_d *spline, const std::string& fileName);
+
 };
 
 template<typename T>
@@ -173,7 +181,7 @@ typename bspline_traits<T, 3>::SplineType *
 Allocator::createMultiBspline(T dummy, ValT &start, ValT &end, IntT &ng,
                               bc_code bc, int num_splines, std::string fileName)
 {
-  SplineInfo currSpline;
+  multi_UBspline_3d_d * spline;
   Ugrid x_grid, y_grid, z_grid;
   typename bspline_traits<T, 3>::BCType xBC, yBC, zBC;
   x_grid.start = start[0];
@@ -188,20 +196,13 @@ Allocator::createMultiBspline(T dummy, ValT &start, ValT &end, IntT &ng,
   xBC.lCode = xBC.rCode = bc;
   yBC.lCode = yBC.rCode = bc;
   zBC.lCode = zBC.rCode = bc;
-
-  multi_UBspline_3d_d * splinePtr = allocateMultiBspline(x_grid, y_grid, z_grid, xBC, yBC, zBC,
-                              num_splines, fileName);
-  currSpline.size = splinePtr->coefs_size;
-  if ((sizeof(double) * currSpline.size) < 100000)
+  spline = allocateMultiBspline(x_grid, y_grid, z_grid, xBC, yBC, zBC, num_splines, "");
+  if(countMemory(spline, fileName));
   {
-    fileName = "";
+    spline = allocateMultiBspline(x_grid, y_grid, z_grid, xBC, yBC, zBC, num_splines, fileName);
   }
-  currSpline.fileName = fileName;
-  currSpline.ptr = splinePtr;
-  splines.push_back(currSpline);
-  
- 
-  return splinePtr;
+  storeSpline(spline, fileName); 
+  return spline;
 }
 //END DEBUG DUPE ***********************************************************
 /*

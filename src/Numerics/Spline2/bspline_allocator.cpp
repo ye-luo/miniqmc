@@ -51,7 +51,7 @@ namespace qmcplusplus
 namespace einspline
 {
 
-Allocator::Allocator() : Policy(0) {}
+Allocator::Allocator() : MemoryThreshold(0), Policy(0) {}
 
 Allocator::~Allocator() {}
 
@@ -98,7 +98,30 @@ UBspline_3d_s *Allocator::allocateUBspline(Ugrid x_grid, Ugrid y_grid,
   return einspline_create_UBspline_3d_s(x_grid, y_grid, z_grid, xBC, yBC, zBC);
 }
 
+bool Allocator::countMemory(multi_UBspline_3d_d *spline, std::string& fileName)
+{
+  bool flag = false;
 
+  if ((sizeof(double) * spline->coefs_size) > MemoryThreshold && MemoryThreshold != 0)
+  {
+    destroy(spline, "");
+    flag = true;
+  }
+  else
+  {
+    fileName = "";
+  }
 
+  return flag;
+}
+
+void Allocator::storeSpline(multi_UBspline_3d_d *spline, const std::string& fileName)
+{
+  SplineInfo currSpline;
+  currSpline.size = spline->coefs_size;
+  currSpline.fileName = fileName;
+  currSpline.ptr = spline;
+  splines.push_back(currSpline);
+}
 }
 }
