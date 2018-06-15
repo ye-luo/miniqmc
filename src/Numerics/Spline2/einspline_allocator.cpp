@@ -41,7 +41,7 @@
 #if defined(__INTEL_COMPILER)
 
 // Debug code *********************************************************************
-void *einspline_alloc(size_t size, size_t alignment, std::string fileName)
+void *einspline_alloc(size_t size, size_t alignment, const std::string &fileName)
 {
   void * coefs = nullptr;
   if (fileName == "")
@@ -227,7 +227,7 @@ einspline_create_multi_UBspline_3d_s(Ugrid x_grid, Ugrid y_grid, Ugrid z_grid,
 multi_UBspline_3d_d *
 einspline_create_multi_UBspline_3d_d(Ugrid x_grid, Ugrid y_grid, Ugrid z_grid,
                                      BCtype_d xBC, BCtype_d yBC, BCtype_d zBC,
-                                     int num_splines, std::string fileName)
+                                     int num_splines, const std::string &fileName)
 {
   // Create new spline
   multi_UBspline_3d_d *restrict spline = (multi_UBspline_3d_d *)malloc(sizeof(multi_UBspline_3d_d));

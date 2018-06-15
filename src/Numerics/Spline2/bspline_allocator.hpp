@@ -62,7 +62,7 @@ public:
   ~Allocator();
 
 //DEBUG USED *******************************************************************
-  template <typename SplineType> void destroy(SplineType *spline, std::string fileName)
+  template <typename SplineType> void destroy(SplineType *spline, const std::string &fileName)
   {
     if (fileName == "")
       einspline_free(spline->coefs);
@@ -81,7 +81,7 @@ public:
   template <typename SplineType> void destroy(SplineType *spline)
   {
     einspline_free(spline->coefs);
-    free(spline); 
+    free(spline);
   }
 */
   /// allocate a single multi-bspline
@@ -94,7 +94,7 @@ public:
   multi_UBspline_3d_d *allocateMultiBspline(Ugrid x_grid, Ugrid y_grid,
                                             Ugrid z_grid, BCtype_d xBC,
                                             BCtype_d yBC, BCtype_d zBC,
-                                            int num_splines, std::string fileName);
+                                            int num_splines, std::string fileName = "");
 //END DEBUG DUPE **********************************************************
 /*
   /// allocate a double multi-bspline
@@ -159,15 +159,32 @@ public:
    * @param spline target MultibsplineType
    * @param filename for the current spline to be stored on the SSD
   */
-  template <typename T, typename ValT, typename IntT>
-  bool withinMemoryLimit(typename bspline_traits<T,3>::SplineType *spline, std::string& fileName);
+  template <typename SplineType>
+  bool withinMemoryLimit(SplineType *spline, std::string& fileName)
+  {
+    //Ye: Need another memory size variable to track the residual.
+    if ((sizeof(*(spline->coefs)) * spline->coefs_size) > MemoryThreshold && MemoryThreshold != 0)
+      Exhausted = true;
+    else
+      fileName = "";
+
+    return Exhausted;
+  }
 
   /** store the location, size, and filename of the given spline for searching to unmap or free
    * @param spline target MultibsplineType
    * @param filename for the current spline to be stored on the SSD
   */
-  template <typename T, typename ValT, typename IntT>
-  void storeSpline(typename bspline_traits<T,3>::SplineType *spline, const std::string& fileName);
+  template <typename SplineType>
+  void storeSpline(SplineType *spline, const std::string& fileName)
+  {
+    // Ye: consider recording size in MB
+    SplineInfo currSpline;
+    currSpline.size = spline->coefs_size;
+    currSpline.fileName = fileName;
+    currSpline.ptr = spline;
+    splines.push_back(currSpline);
+  }
 
 };
 
@@ -213,14 +230,14 @@ Allocator::createMultiBspline(T dummy, ValT &start, ValT &end, IntT &ng,
   }
   else
   {
-    spline = allocateMultiBspline(x_grid, y_grid, z_grid, xBC, yBC, zBC, num_splines, "");
-    if(withinMemoryLimit<T, ValT, IntT>(spline, fileName));
+    spline = allocateMultiBspline(x_grid, y_grid, z_grid, xBC, yBC, zBC, num_splines);
+    if(withinMemoryLimit(spline, fileName));
     {
       destroy(spline, "");
       spline = allocateMultiBspline(x_grid, y_grid, z_grid, xBC, yBC, zBC, num_splines, fileName);
     }
   }
-  storeSpline<T, ValT, IntT>(spline, fileName); 
+  storeSpline(spline, fileName);
   return spline;
 }
 //END DEBUG DUPE ***********************************************************
@@ -300,26 +317,6 @@ void Allocator::copy(UBT *single, MBT *multi, int i, const int *offset,
     }
 }
 
-template <typename T, typename ValT, typename IntT>
-bool Allocator::withinMemoryLimit(typename bspline_traits<T,3>::SplineType *spline, std::string& fileName)
-{
-  if ((sizeof(ValT) * spline->coefs_size) > MemoryThreshold && MemoryThreshold != 0)
-    Exhausted = true;
-  else
-    fileName = "";
-
-  return Exhausted;
-}
-
-template <typename T, typename ValT, typename IntT>
-void Allocator::storeSpline(typename bspline_traits<T,3>::SplineType *spline, const std::string& fileName)
-{
-  SplineInfo currSpline;
-  currSpline.size = spline->coefs_size;
-  currSpline.fileName = fileName;
-  currSpline.ptr = spline;
-  splines.push_back(currSpline);
-}
 }
 }
 #endif

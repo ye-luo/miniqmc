@@ -34,7 +34,7 @@ UBspline_3d_s *einspline_create_UBspline_3d_s(Ugrid x_grid, Ugrid y_grid,
 multi_UBspline_3d_d *
 einspline_create_multi_UBspline_3d_d(Ugrid x_grid, Ugrid y_grid, Ugrid z_grid,
                                      BCtype_d xBC, BCtype_d yBC, BCtype_d zBC,
-                                     int num_splines, std::string fileName);
+                                     int num_splines, const std::string &fileName);
 //DEBUG END DUPE ***************************************************************
 /*
 multi_UBspline_3d_d *
@@ -51,7 +51,7 @@ namespace qmcplusplus
 namespace einspline
 {
 
-Allocator::Allocator() : MemoryThreshold(0), Policy(0) {}
+Allocator::Allocator() : MemoryThreshold(0), Exhausted(false), Policy(0) {}
 
 Allocator::~Allocator() {}
 
