@@ -42,6 +42,8 @@ class Allocator
 private:
   /// Setting the allocation to move to disk: default is zero
   int MemoryThreshold;
+  /// Setting the status if RAM capacity exhausted
+  bool Exhausted;
   /// Setting the allocation policy: default is using aligned allocator
   int Policy;
 
@@ -153,10 +155,19 @@ public:
   template <typename UBT, typename MBT>
   void copy(UBT *single, MBT *multi, int i, const int *offset, const int *N);
 
-  /** checka the memory
+  /** check if the size of the coefficients are within given limits of memory use
+   * @param spline target MultibsplineType
+   * @param filename for the current spline to be stored on the SSD
   */
-  bool countMemory(multi_UBspline_3d_d *spline, std::string& fileName);
-  void storeSpline(multi_UBspline_3d_d *spline, const std::string& fileName);
+  template <typename T, typename ValT, typename IntT>
+  bool withinMemoryLimit(typename bspline_traits<T,3>::SplineType *spline, std::string& fileName);
+
+  /** store the location, size, and filename of the given spline for searching to unmap or free
+   * @param spline target MultibsplineType
+   * @param filename for the current spline to be stored on the SSD
+  */
+  template <typename T, typename ValT, typename IntT>
+  void storeSpline(typename bspline_traits<T,3>::SplineType *spline, const std::string& fileName);
 
 };
 
@@ -181,7 +192,7 @@ typename bspline_traits<T, 3>::SplineType *
 Allocator::createMultiBspline(T dummy, ValT &start, ValT &end, IntT &ng,
                               bc_code bc, int num_splines, std::string fileName)
 {
-  multi_UBspline_3d_d * spline;
+  typename bspline_traits<T, 3>::SplineType * spline;
   Ugrid x_grid, y_grid, z_grid;
   typename bspline_traits<T, 3>::BCType xBC, yBC, zBC;
   x_grid.start = start[0];
@@ -196,12 +207,20 @@ Allocator::createMultiBspline(T dummy, ValT &start, ValT &end, IntT &ng,
   xBC.lCode = xBC.rCode = bc;
   yBC.lCode = yBC.rCode = bc;
   zBC.lCode = zBC.rCode = bc;
-  spline = allocateMultiBspline(x_grid, y_grid, z_grid, xBC, yBC, zBC, num_splines, "");
-  if(countMemory(spline, fileName));
+  if(Exhausted)
   {
     spline = allocateMultiBspline(x_grid, y_grid, z_grid, xBC, yBC, zBC, num_splines, fileName);
   }
-  storeSpline(spline, fileName); 
+  else
+  {
+    spline = allocateMultiBspline(x_grid, y_grid, z_grid, xBC, yBC, zBC, num_splines, "");
+    if(withinMemoryLimit<T, ValT, IntT>(spline, fileName));
+    {
+      destroy(spline, "");
+      spline = allocateMultiBspline(x_grid, y_grid, z_grid, xBC, yBC, zBC, num_splines, fileName);
+    }
+  }
+  storeSpline<T, ValT, IntT>(spline, fileName); 
   return spline;
 }
 //END DEBUG DUPE ***********************************************************
@@ -279,6 +298,27 @@ void Allocator::copy(UBT *single, MBT *multi, int i, const int *offset,
         out[iz * z_stride_out] = static_cast<out_type>(in[iz]);
       }
     }
+}
+
+template <typename T, typename ValT, typename IntT>
+bool Allocator::withinMemoryLimit(typename bspline_traits<T,3>::SplineType *spline, std::string& fileName)
+{
+  if ((sizeof(ValT) * spline->coefs_size) > MemoryThreshold && MemoryThreshold != 0)
+    Exhausted = true;
+  else
+    fileName = "";
+
+  return Exhausted;
+}
+
+template <typename T, typename ValT, typename IntT>
+void Allocator::storeSpline(typename bspline_traits<T,3>::SplineType *spline, const std::string& fileName)
+{
+  SplineInfo currSpline;
+  currSpline.size = spline->coefs_size;
+  currSpline.fileName = fileName;
+  currSpline.ptr = spline;
+  splines.push_back(currSpline);
 }
 }
 }
