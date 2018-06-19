@@ -40,56 +40,48 @@
 
 #if defined(__INTEL_COMPILER)
 
-// Debug code *********************************************************************
-void *einspline_alloc(size_t size, size_t alignment, const std::string &fileName)
-{
-  void * coefs = nullptr;
-  if (fileName == "")
-    coefs = _mm_malloc(size, alignment);
-  else
-  {
-    int fd, result;
-    fd = open(fileName.c_str(), O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600);
-    if (fd == -1 )
-    {
-      perror("Error opening file for writing");
-      exit(EXIT_FAILURE);
-    }
-
-    result = lseek(fd, size, SEEK_SET);
-    if (result == -1 )
-    {
-      close(fd);
-      perror("Error calling lseek() to 'stretch' the file");
-      exit(EXIT_FAILURE);
-    }
-
-    result = write(fd, "", 1);
-    if (result == -1 )
-    {
-      close(fd);
-      perror("Error writing last byte of file");
-      exit(EXIT_FAILURE);
-    }
-
-    coefs = mmap(0, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-    if (coefs == MAP_FAILED )
-    {
-      close(fd);
-      perror("Error mapping coefs");
-      exit(EXIT_FAILURE);
-    }
-
-    close(fd);
-  }
-
-  return coefs;
-}
-// DEBUG END DUPE ****************************************************************
-
 void *einspline_alloc(size_t size, size_t alignment)
 {
   return _mm_malloc(size, alignment);
+}
+
+void *einspline_alloc(size_t size, size_t alignment, const std::string &fileName)
+{
+  int fd, result;
+  fd = open(fileName.c_str(), O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600);
+  if (fd == -1 )
+  {
+    perror("Error opening file for writing");
+    exit(EXIT_FAILURE);
+  }
+
+  result = lseek(fd, size, SEEK_SET);
+  if (result == -1 )
+  {
+    close(fd);
+    perror("Error calling lseek() to 'stretch' the file");
+    exit(EXIT_FAILURE);
+  }
+
+  result = write(fd, "", 1);
+  if (result == -1 )
+  {
+    close(fd);
+    perror("Error writing last byte of file");
+    exit(EXIT_FAILURE);
+  }
+
+  void * coefs = mmap(0, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+  if (coefs == MAP_FAILED )
+  {
+    close(fd);
+    perror("Error mapping coefs");
+    exit(EXIT_FAILURE);
+  }
+
+  close(fd);
+
+  return coefs;
 }
 
 void einspline_free(void *ptr) { _mm_free(ptr); }
@@ -284,8 +276,12 @@ einspline_create_multi_UBspline_3d_d(Ugrid x_grid, Ugrid y_grid, Ugrid z_grid,
   spline->z_stride = N;
 
   spline->coefs_size = (size_t)Nx * spline->x_stride;
-  spline->coefs =
-      (double *)einspline_alloc(sizeof(double) * spline->coefs_size, QMC_CLINE, fileName);
+  if (fileName == "")
+    spline->coefs =
+        (double *)einspline_alloc(sizeof(double) * spline->coefs_size, QMC_CLINE);
+  else
+    spline->coefs =
+        (double *)einspline_alloc(sizeof(double) * spline->coefs_size, QMC_CLINE, fileName);
 
   if (!spline->coefs)
   {

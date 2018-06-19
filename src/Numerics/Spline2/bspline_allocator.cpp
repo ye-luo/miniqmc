@@ -51,7 +51,7 @@ namespace qmcplusplus
 namespace einspline
 {
 
-Allocator::Allocator() : MemoryThreshold(0), Exhausted(false), Policy(0) {}
+Allocator::Allocator() : MemoryThreshold(180000), Allocated(0), Exhausted(false), Policy(0) {}
 
 Allocator::~Allocator() {}
 

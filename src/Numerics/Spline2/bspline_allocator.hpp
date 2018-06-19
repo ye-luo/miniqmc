@@ -33,15 +33,17 @@ namespace einspline
 //DEBUG TESTin ***********************************************************
 struct SplineInfo {
   std::string fileName;
-  multi_UBspline_3d_d * ptr;
-  size_t size;
+  void * ptr;
+  double size_MB;
 };
 
 class Allocator
 {
 private:
-  /// Setting the allocation to move to disk: default is zero
-  int MemoryThreshold;
+  /// Setting of the memory limit RAM can hold: default is zero
+  size_t MemoryThreshold;
+  /// Allocation of memory on RAM: default is zero
+  size_t Allocated;
   /// Setting the status if RAM capacity exhausted
   bool Exhausted;
   /// Setting the allocation policy: default is using aligned allocator
@@ -162,11 +164,16 @@ public:
   template <typename SplineType>
   bool withinMemoryLimit(SplineType *spline, std::string& fileName)
   {
-    //Ye: Need another memory size variable to track the residual.
-    if ((sizeof(*(spline->coefs)) * spline->coefs_size) > MemoryThreshold && MemoryThreshold != 0)
+    const double sizeToAllocate = (sizeof(*(spline->coefs)) * spline->coefs_size) * 1.0 / 1024 / 1024;
+    if (sizeToAllocate > (MemoryThreshold - Allocated) && MemoryThreshold != 0)
+    {
       Exhausted = true;
+    }
     else
+    {
       fileName = "";
+      Allocated += sizeToAllocate;
+    }
 
     return Exhausted;
   }
@@ -178,9 +185,8 @@ public:
   template <typename SplineType>
   void storeSpline(SplineType *spline, const std::string& fileName)
   {
-    // Ye: consider recording size in MB
     SplineInfo currSpline;
-    currSpline.size = spline->coefs_size;
+    currSpline.size_MB = spline->coefs_size * 1.0 / 1024 / 1024; 
     currSpline.fileName = fileName;
     currSpline.ptr = spline;
     splines.push_back(currSpline);
