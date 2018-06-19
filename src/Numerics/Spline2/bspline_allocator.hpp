@@ -34,7 +34,7 @@ namespace einspline
 struct SplineInfo {
   std::string fileName;
   void * ptr;
-  double size_MB;
+  size_t size_MB;
 };
 
 class Allocator
@@ -164,7 +164,7 @@ public:
   template <typename SplineType>
   bool withinMemoryLimit(SplineType *spline, std::string& fileName)
   {
-    const double sizeToAllocate = (sizeof(*(spline->coefs)) * spline->coefs_size) * 1.0 / 1024 / 1024;
+    const size_t sizeToAllocate = (sizeof(*(spline->coefs)) * spline->coefs_size) * 1.0 / 1024 / 1024;
     if (sizeToAllocate > (MemoryThreshold - Allocated) && MemoryThreshold != 0)
     {
       Exhausted = true;
