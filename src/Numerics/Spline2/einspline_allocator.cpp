@@ -84,7 +84,7 @@ void *einspline_alloc(size_t size, size_t alignment, const std::string &fileName
   return coefs;
 }
 
-void einspline_free_coefs(void *coefs, const size_t &coefSize, const std::string &fileName) 
+void einspline_free_coefs(void *coefs, const size_t &coefSize, const std::string &fileName)
 {
   if (fileName == "")
     _mm_free(coefs);

@@ -182,7 +182,7 @@ public:
   void storeSpline(SplineType *spline, const std::string& fileName)
   {
     SplineInfo currSpline;
-    currSpline.size_MB = spline->coefs_size / 1024 / 1024; 
+    currSpline.size_MB = spline->coefs_size / 1024 / 1024;
     currSpline.fileName = fileName;
     currSpline.ptr = spline;
     splines.push_back(currSpline);
