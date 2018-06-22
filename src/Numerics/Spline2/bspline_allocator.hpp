@@ -66,17 +66,10 @@ public:
 //DEBUG USED *******************************************************************
   template <typename SplineType> void destroy(SplineType *spline, const std::string &fileName)
   {
-    if (fileName == "")
-      einspline_free(spline->coefs);
-    else
-    {
-      if (munmap(spline->coefs, sizeof(double) * spline->coefs_size) == -1)
-        perror("Error un-mmapping the file");
+    if(spline->coefs)
+      einspline_free_coefs(spline->coefs, sizeof(*(spline->coefs)) * spline->coefs_size, fileName);
 
-      //remove(fileName.c_str());
-    }
-
-    free(spline);
+    einspline_free(spline);
   }
 //END DEBUG *********************************************************************
 /*
@@ -145,7 +138,8 @@ public:
    * @param spline target MultibsplineType
    */
   template<typename T>
-  void setCoefficientsForOneOrbital(int i, Array<T,3> &coeff, typename bspline_traits<T,3>::SplineType *spline);
+  void setCoefficientsForOneOrbital(Array<T,3> &coeff, typename bspline_traits<T,3>::SplineType *spline);
+  //void setCoefficientsForOneOrbital(int i, Array<T,3> &coeff, typename bspline_traits<T,3>::SplineType *spline);
 
   /** copy a UBSpline_3d_X to multi_UBspline_3d_X at i-th band
    * @param single  UBspline_3d_X
@@ -164,7 +158,8 @@ public:
   template <typename SplineType>
   bool withinMemoryLimit(SplineType *spline, std::string& fileName)
   {
-    const size_t sizeToAllocate = (sizeof(*(spline->coefs)) * spline->coefs_size) * 1.0 / 1024 / 1024;
+    bool withinLimit = false;
+    const size_t sizeToAllocate = (sizeof(*(spline->coefs)) * spline->coefs_size) / 1024 / 1024;
     if (sizeToAllocate > (MemoryThreshold - Allocated) && MemoryThreshold != 0)
     {
       Exhausted = true;
@@ -173,9 +168,10 @@ public:
     {
       fileName = "";
       Allocated += sizeToAllocate;
+      withinLimit = true;
     }
 
-    return Exhausted;
+    return withinLimit;
   }
 
   /** store the location, size, and filename of the given spline for searching to unmap or free
@@ -186,7 +182,7 @@ public:
   void storeSpline(SplineType *spline, const std::string& fileName)
   {
     SplineInfo currSpline;
-    currSpline.size_MB = spline->coefs_size * 1.0 / 1024 / 1024; 
+    currSpline.size_MB = spline->coefs_size / 1024 / 1024; 
     currSpline.fileName = fileName;
     currSpline.ptr = spline;
     splines.push_back(currSpline);
@@ -195,8 +191,22 @@ public:
 };
 
 template<typename T>
+void Allocator::setCoefficientsForOneOrbital(Array<T,3> &coeff, typename bspline_traits<T,3>::SplineType *spline)
+{
+  const intptr_t xs = spline->x_stride;
+  const intptr_t ys = spline->y_stride;
+  const intptr_t zs = spline->z_stride;
+  for (int ix = 0; ix < spline->x_grid.num + 3; ix++)
+    for (int iy = 0; iy < spline->y_grid.num + 3; iy++)
+      for (int iz = 0; iz < spline->z_grid.num + 3; iz++)
+        for (int i = 0; i < spline->z_stride; i++)
+          spline->coefs[ix*xs + iy*ys + iz*zs + i] = coeff(ix,iy,iz);
+}
+/*
+template<typename T>
 void Allocator::setCoefficientsForOneOrbital(int i, Array<T,3> &coeff, typename bspline_traits<T,3>::SplineType *spline)
 {
+  #pragma omp parallel for collapse(3)
   for (int ix = 0; ix < spline->x_grid.num + 3; ix++) {
     for (int iy = 0; iy < spline->y_grid.num + 3; iy++) {
       for (int iz = 0; iz < spline->z_grid.num + 3; iz++) {
@@ -207,7 +217,7 @@ void Allocator::setCoefficientsForOneOrbital(int i, Array<T,3> &coeff, typename 
       }
     }
   }
-}
+}*/
 
 //DEBUG: USED ***************************************************************
 template <typename T, typename ValT, typename IntT>
@@ -237,7 +247,7 @@ Allocator::createMultiBspline(T dummy, ValT &start, ValT &end, IntT &ng,
   else
   {
     spline = allocateMultiBspline(x_grid, y_grid, z_grid, xBC, yBC, zBC, num_splines);
-    if(withinMemoryLimit(spline, fileName));
+    if(!withinMemoryLimit(spline, fileName) || !spline);
     {
       destroy(spline, "");
       spline = allocateMultiBspline(x_grid, y_grid, z_grid, xBC, yBC, zBC, num_splines, fileName);

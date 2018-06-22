@@ -55,7 +55,7 @@ void *einspline_alloc(size_t size, size_t alignment, const std::string &fileName
     exit(EXIT_FAILURE);
   }
 
-  result = lseek(fd, size, SEEK_SET);
+  result = lseek64(fd, size, SEEK_SET);
   if (result == -1 )
   {
     close(fd);
@@ -71,7 +71,7 @@ void *einspline_alloc(size_t size, size_t alignment, const std::string &fileName
     exit(EXIT_FAILURE);
   }
 
-  void * coefs = mmap(0, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+  void * coefs = mmap64(0, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
   if (coefs == MAP_FAILED )
   {
     close(fd);
@@ -84,7 +84,18 @@ void *einspline_alloc(size_t size, size_t alignment, const std::string &fileName
   return coefs;
 }
 
-void einspline_free(void *ptr) { _mm_free(ptr); }
+void einspline_free_coefs(void *coefs, const size_t &coefSize, const std::string &fileName) 
+{
+  if (fileName == "")
+    _mm_free(coefs);
+  else
+  {
+    if (munmap(coefs, coefSize) == -1)
+      perror("Error un-mmapping the file");
+  }
+}
+
+void einspline_free(void *ptr) { free(ptr); }
 
 #elif defined(HAVE_POSIX_MEMALIGN)
 
@@ -282,13 +293,6 @@ einspline_create_multi_UBspline_3d_d(Ugrid x_grid, Ugrid y_grid, Ugrid z_grid,
   else
     spline->coefs =
         (double *)einspline_alloc(sizeof(double) * spline->coefs_size, QMC_CLINE, fileName);
-
-  if (!spline->coefs)
-  {
-    fprintf(stderr, "Out of memory allocating spline coefficients in "
-                    "create_multi_UBspline_3d_d.\n");
-    abort();
-  }
 
   return spline;
 }

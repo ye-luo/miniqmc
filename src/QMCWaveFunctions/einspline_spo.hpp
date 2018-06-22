@@ -138,19 +138,16 @@ struct einspline_spo
       einsplines.resize(nBlocks);
       RandomGenerator<T> myrandom(11);
       Array<T, 3> coef_data(nx+3, ny+3, nz+3);
-//DEBUG MOVED OUT OF NESTED FOR LOOP ***********************************************************************
-      myrandom.generate_uniform(coef_data.data(), coef_data.size());
       for (int i = 0; i < nBlocks; ++i)
       {
-//DEBUG ADDED TILE *****************************************************************************************
         fileName = "/local/scratch/coef" + std::to_string(i) + ".bin";
+        std::cout << "on tile " << i + 1 << " of " << nBlocks << "\n";
         einsplines[i] = myAllocator.createMultiBspline(T(0), start, end, ng, PERIODIC, nSplinesPerBlock, fileName);
         //einsplines[i] = myAllocator.createMultiBspline(T(0), start, end, ng, PERIODIC, nSplinesPerBlock);
         if (init_random) {
-          for (int j = 0; j < nSplinesPerBlock; ++j) {
-            // Generate different coefficients for each orbital
-            myAllocator.setCoefficientsForOneOrbital(j, coef_data, einsplines[i]);
-          }
+          myrandom.generate_uniform(coef_data.data(), coef_data.size());
+          // Generate different coefficients for each orbital
+          myAllocator.setCoefficientsForOneOrbital(coef_data, einsplines[i]);
         }
       }
     }

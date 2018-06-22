@@ -33,5 +33,6 @@ void *einspline_alloc(size_t size, size_t alignment);
 
 void einspline_free(void *ptr);
 
+void einspline_free_coefs(void *coefs, const size_t &coefSize, const std::string &fileName);
 
 #endif
