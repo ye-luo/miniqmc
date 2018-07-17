@@ -188,6 +188,15 @@ public:
     splines.push_back(currSpline);
   }
 
+  //template <typename SplineType>
+  void adviseSpline(const int& i)
+  {
+    multi_UBspline_3d_d * currSpline = (multi_UBspline_3d_d *)splines[i].ptr;
+    if (splines[i].fileName != "")
+      madvise(currSpline->coefs, sizeof(*(currSpline->coefs)) * currSpline->coefs_size, MADV_DONTNEED);
+  }
+
+
 };
 
 template<typename T>

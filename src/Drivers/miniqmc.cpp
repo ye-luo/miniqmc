@@ -115,6 +115,7 @@
 #include <QMCWaveFunctions/einspline_spo.hpp>
 #include <QMCWaveFunctions/WaveFunction.h>
 #include <getopt.h>
+#include <stdio.h>
 
 using namespace std;
 using namespace qmcplusplus;
@@ -167,6 +168,27 @@ void print_help()
   app_summary() << "  -v  verbose output"                                        << '\n';
   app_summary() << "  -V  print version information and exit"                    << '\n';
   //clang-format on
+}
+
+void printMemInfo()
+{
+  char buf[8192];
+  FILE* fd = fopen("/proc/meminfo", "r");
+  if (fd == nullptr)
+  {
+    perror("Error opening meminfo file");
+    exit(EXIT_FAILURE);
+  }
+  size_t len = fread(buf, 1, sizeof(buf) - 1, fd);
+  if (len == 0) {
+      perror("Could not read /proc/meminfo");
+      exit(103);
+  }
+  buf[len] = 0;
+
+  fclose(fd);
+
+  printf("%s\n", buf);
 }
 
 int main(int argc, char **argv)
@@ -324,6 +346,9 @@ int main(int argc, char **argv)
 
     spo_main.set(nx, ny, nz, norb, nTiles);
     spo_main.Lattice.set(lattice_b);
+    printMemInfo();
+    spo_main.advise(norb, nTiles);
+    printMemInfo();
   }
 
   if (!useRef)

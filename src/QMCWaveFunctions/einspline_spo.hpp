@@ -140,7 +140,7 @@ struct einspline_spo
       Array<T, 3> coef_data(nx+3, ny+3, nz+3);
       for (int i = 0; i < nBlocks; ++i)
       {
-        fileName = "/local/scratch/coef" + std::to_string(i) + ".bin";
+        fileName = "coef" + std::to_string(i) + ".bin";
         std::cout << "on tile " << i + 1 << " of " << nBlocks << "\n";
         einsplines[i] = myAllocator.createMultiBspline(T(0), start, end, ng, PERIODIC, nSplinesPerBlock, fileName);
         //einsplines[i] = myAllocator.createMultiBspline(T(0), start, end, ng, PERIODIC, nSplinesPerBlock);
@@ -152,6 +152,19 @@ struct einspline_spo
       }
     }
     resize();
+  }
+
+  void advise(const int& num_splines, const int& nblocks)
+  {
+    nSplines         = num_splines;
+    nBlocks          = nblocks;
+    nSplinesPerBlock = num_splines / nblocks;
+    firstBlock       = 0;
+    lastBlock        = nBlocks;
+    for (int i = 0; i < nBlocks; ++i)
+    {
+      myAllocator.adviseSpline(i);
+    }
   }
 
   /** evaluate psi */
