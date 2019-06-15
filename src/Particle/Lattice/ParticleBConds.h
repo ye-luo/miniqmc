@@ -187,10 +187,71 @@ struct DTD_BConds<T, 3, PPPG + SOA_OFFSET>
 
     constexpr T minusone(-1);
     constexpr T one(1);
-    //#pragma omp simd aligned(temp_r, px, py, pz, dx, dy, dz)
-    #pragma omp target teams distribute parallel for simd \
-      map(always, to: px[first:last-first], py[first:last-first], pz[first:last-first]) \
-      map(always, from: temp_r[first:last-first], dx[first:last-first], dy[first:last-first], dz[first:last-first])
+    #pragma omp simd aligned(temp_r, px, py, pz, dx, dy, dz)
+    for (int iat = first; iat < last; ++iat)
+    {
+      const T flip    = iat < flip_ind ? one : minusone;
+      const T displ_0 = (px[iat] - x0) * flip;
+      const T displ_1 = (py[iat] - y0) * flip;
+      const T displ_2 = (pz[iat] - z0) * flip;
+
+      const T ar_0 = -std::floor(displ_0 * g00 + displ_1 * g10 + displ_2 * g20);
+      const T ar_1 = -std::floor(displ_0 * g01 + displ_1 * g11 + displ_2 * g21);
+      const T ar_2 = -std::floor(displ_0 * g02 + displ_1 * g12 + displ_2 * g22);
+
+      const T delx = displ_0 + ar_0 * r00 + ar_1 * r10 + ar_2 * r20;
+      const T dely = displ_1 + ar_0 * r01 + ar_1 * r11 + ar_2 * r21;
+      const T delz = displ_2 + ar_0 * r02 + ar_1 * r12 + ar_2 * r22;
+
+      T rmin = delx * delx + dely * dely + delz * delz;
+      int ic = 0;
+#pragma unroll(7)
+      for (int c = 1; c < 8; ++c)
+      {
+        const T x  = delx + corners_x[c];
+        const T y  = dely + corners_y[c];
+        const T z  = delz + corners_z[c];
+        const T r2 = x * x + y * y + z * z;
+        ic         = (r2 < rmin) ? c : ic;
+        rmin       = (r2 < rmin) ? r2 : rmin;
+      }
+
+      temp_r[iat] = std::sqrt(rmin);
+      dx[iat]     = flip * (delx + corners_x[ic]);
+      dy[iat]     = flip * (dely + corners_y[ic]);
+      dz[iat]     = flip * (delz + corners_z[ic]);
+    }
+  }
+
+  template<typename PT>
+  void computeDistancesOffload(const PT& pos,
+                        const T* restrict R0,
+                        T* restrict temp_r,
+                        T* restrict temp_dr,
+                        int padded_size,
+                        int first,
+                        int last,
+                        int flip_ind = 0)
+  {
+    const T x0 = pos[0];
+    const T y0 = pos[1];
+    const T z0 = pos[2];
+
+    const T* restrict px = R0;
+    const T* restrict py = R0 + padded_size;
+    const T* restrict pz = R0 + padded_size * 2;
+
+    T* restrict dx = temp_dr;
+    T* restrict dy = temp_dr + padded_size;
+    T* restrict dz = temp_dr + padded_size * 2;
+
+    const auto& corners_x = corners[0];
+    const auto& corners_y = corners[1];
+    const auto& corners_z = corners[2];
+
+    constexpr T minusone(-1);
+    constexpr T one(1);
+    #pragma omp parallel for simd
     for (int iat = first; iat < last; ++iat)
     {
       const T flip    = iat < flip_ind ? one : minusone;

@@ -67,6 +67,7 @@ struct DistanceTableBA : public DTD_BConds<T, D, SC>, public DistanceTableData
   inline void evaluate(ParticleSet& P)
   {
     // be aware of the sign of Displacement
+    /*
     for (int iat = 0; iat < Ntargets; ++iat)
       DTD_BConds<T, D, SC>::computeDistances(P.R[iat],
                                              Origin->RSoA,
@@ -74,6 +75,15 @@ struct DistanceTableBA : public DTD_BConds<T, D, SC>, public DistanceTableData
                                              Displacements[iat],
                                              0,
                                              Nsources);
+    */
+    for (int iat = 0; iat < Ntargets; ++iat)
+      DTD_BConds<T, D, SC>::computeDistancesOffload(P.R[iat],
+                                                    Origin->RSoA.data(),
+                                                    Distances[iat],
+                                                    Displacements[iat].data(),
+                                                    BlockSize,
+                                                    0,
+                                                    Nsources);
   }
 
   /** evaluate the iat-row with the current position
