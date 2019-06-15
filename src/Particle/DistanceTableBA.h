@@ -18,6 +18,8 @@
 #ifndef QMCPLUSPLUS_DTDIMPL_BA_H
 #define QMCPLUSPLUS_DTDIMPL_BA_H
 
+#include "OpenMP/OMPallocator.hpp"
+
 namespace qmcplusplus
 {
 /**@ingroup nnlist
@@ -29,7 +31,9 @@ struct DistanceTableBA : public DTD_BConds<T, D, SC>, public DistanceTableData
 {
   int Nsources;
   int Ntargets;
-  int BlockSize;
+
+  /// actual memory for Distances and Displacements
+  Vector<RealType, OMPallocator<RealType, aligned_allocator<RealType>>> memoryPool;
 
   DistanceTableBA(const ParticleSet& source, ParticleSet& target)
       : DTD_BConds<T, D, SC>(source.Lattice), DistanceTableData(source, target)
@@ -45,16 +49,15 @@ struct DistanceTableBA : public DTD_BConds<T, D, SC>, public DistanceTableData
     if (Nsources * Ntargets == 0)
       return;
 
-    int Ntargets_padded = getAlignedSize<T>(Ntargets);
     int Nsources_padded = getAlignedSize<T>(Nsources);
 
-    Distances.resize(Ntargets, Nsources_padded);
+    memoryPool.resize(Ntargets * Nsources_padded * (D + 1));
 
-    BlockSize = Nsources_padded * D;
-    memoryPool.resize(Ntargets * BlockSize);
+    Distances.attachReference(memoryPool.data(), Ntargets, Nsources_padded);
+    size_t head_offset = Ntargets * Nsources_padded;
     Displacements.resize(Ntargets);
     for (int i = 0; i < Ntargets; ++i)
-      Displacements[i].attachReference(Nsources, Nsources_padded, memoryPool.data() + i * BlockSize);
+      Displacements[i].attachReference(Nsources, Nsources_padded, memoryPool.data() + head_offset + i * Nsources_padded * D);
 
     Temp_r.resize(Nsources);
     Temp_dr.resize(Nsources);
@@ -71,36 +74,33 @@ struct DistanceTableBA : public DTD_BConds<T, D, SC>, public DistanceTableData
   inline void evaluate(ParticleSet& P)
   {
     // be aware of the sign of Displacement
-    /*
-    for (int iat = 0; iat < Ntargets; ++iat)
-      DTD_BConds<T, D, SC>::computeDistances(P.R[iat],
-                                             Origin->RSoA,
-                                             Distances[iat],
-                                             Displacements[iat],
-                                             0,
-                                             Nsources);
-    */
+    int Ntargets_local = Ntargets;
+    int Ntargets_padded = getAlignedSize<T>(Ntargets);
+    int Nsources_local = Nsources;
+    int Nsources_padded = getAlignedSize<T>(Nsources);
+
+    auto* target_pos_ptr = P.RSoA.data();
+    const auto* source_pos_ptr = Origin->RSoA.data();
+    auto* r_dr_ptr = memoryPool.data();
+    #pragma omp target teams distribute \
+      map(to: source_pos_ptr[:Nsources_padded*D], target_pos_ptr[:Ntargets_padded*D]) \
+      map(always, from: r_dr_ptr[:memoryPool.size()])
     for (int iat = 0; iat < Ntargets; ++iat)
     {
-      int Nsources_padded = getAlignedSize<T>(Nsources);
-      int Nsources_local = Nsources;
-      T x = P.R[iat][0];
-      T y = P.R[iat][1];
-      T z = P.R[iat][2];
-      auto* source_pos_ptr = Origin->RSoA.data();
-      auto* r_ptr = Distances[iat];
-      auto* dr_ptr = Displacements[iat].data();
-      #pragma omp target map(to: source_pos_ptr[:Nsources_padded*D]) map(from: r_ptr[:Nsources_padded], dr_ptr[:Nsources_padded*D])
-      {
-        T pos[3] = {x, y, z};
-        DTD_BConds<T, D, SC>::computeDistancesOffload(pos,
-                                                      source_pos_ptr,
-                                                      r_ptr,
-                                                      dr_ptr,
-                                                      Nsources_padded,
-                                                      0,
-                                                      Nsources_local);
-      }
+      T pos[D];
+      for(int idim = 0; idim<D; idim++)
+        pos[idim] = target_pos_ptr[idim*Ntargets_padded + iat];
+
+      auto* r_iat_ptr = r_dr_ptr + Nsources_padded * iat;
+      auto* dr_iat_ptr = r_dr_ptr + Nsources_padded * Ntargets + Nsources_padded * D * iat;
+
+      DTD_BConds<T, D, SC>::computeDistancesOffload(pos,
+                                                    source_pos_ptr,
+                                                    r_iat_ptr,
+                                                    dr_iat_ptr,
+                                                    Nsources_padded,
+                                                    0,
+                                                    Nsources_local);
     }
   }
 

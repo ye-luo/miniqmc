@@ -31,6 +31,9 @@ struct DistanceTableAA : public DTD_BConds<T, D, SC>, public DistanceTableData
   int Ntargets_padded;
   int BlockSize;
 
+  /// actual memory for Displacements
+  aligned_vector<RealType> memoryPool;
+
   DistanceTableAA(ParticleSet& target)
       : DTD_BConds<T, D, SC>(target.Lattice), DistanceTableData(target, target)
   {

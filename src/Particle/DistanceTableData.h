@@ -96,9 +96,6 @@ struct DistanceTableData
   /** Displacements[Nsources]x[3][Ntargets] */
   std::vector<RowContainer> Displacements;
 
-  /// actual memory for Displacements
-  aligned_vector<RealType> memoryPool;
-
   /** temp_r */
   aligned_vector<RealType> Temp_r;
 
