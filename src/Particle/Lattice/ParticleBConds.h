@@ -152,12 +152,6 @@ struct DTD_BConds<T, 3, PPPG + SOA_OFFSET>
       corners_dim[6] = minusone * (rb[1][idim] + rb[2][idim]);
       corners_dim[7] = minusone * (rb[0][idim] + rb[1][idim] + rb[2][idim]);
     }
-    #pragma omp target enter data map(to:this[:1])
-  }
-
-  ~DTD_BConds()
-  {
-    #pragma omp target exit data map(delete:this[:1])
   }
 
   template<typename PT, typename RSoA>
@@ -223,8 +217,7 @@ struct DTD_BConds<T, 3, PPPG + SOA_OFFSET>
     }
   }
 
-  template<typename PT>
-  void computeDistancesOffload(const PT& pos,
+  void computeDistancesOffload(const T pos[3],
                         const T* restrict R0,
                         T* restrict temp_r,
                         T* restrict temp_dr,

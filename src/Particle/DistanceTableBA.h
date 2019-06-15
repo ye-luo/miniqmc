@@ -35,6 +35,7 @@ struct DistanceTableBA : public DTD_BConds<T, D, SC>, public DistanceTableData
       : DTD_BConds<T, D, SC>(source.Lattice), DistanceTableData(source, target)
   {
     resize(source.getTotalNum(), target.getTotalNum());
+    #pragma omp target enter data map(to:this[:1])
   }
 
   void resize(int ns, int nt)
@@ -61,7 +62,10 @@ struct DistanceTableBA : public DTD_BConds<T, D, SC>, public DistanceTableData
 
   DistanceTableBA()                       = delete;
   DistanceTableBA(const DistanceTableBA&) = delete;
-  ~DistanceTableBA() {}
+  ~DistanceTableBA()
+  {
+    #pragma omp target exit data map(delete:this[:1])
+  }
 
   /** evaluate the full table */
   inline void evaluate(ParticleSet& P)
@@ -77,13 +81,27 @@ struct DistanceTableBA : public DTD_BConds<T, D, SC>, public DistanceTableData
                                              Nsources);
     */
     for (int iat = 0; iat < Ntargets; ++iat)
-      DTD_BConds<T, D, SC>::computeDistancesOffload(P.R[iat],
-                                                    Origin->RSoA.data(),
-                                                    Distances[iat],
-                                                    Displacements[iat].data(),
-                                                    BlockSize,
-                                                    0,
-                                                    Nsources);
+    {
+      int Nsources_padded = getAlignedSize<T>(Nsources);
+      int Nsources_local = Nsources;
+      T x = P.R[iat][0];
+      T y = P.R[iat][1];
+      T z = P.R[iat][2];
+      auto* source_pos_ptr = Origin->RSoA.data();
+      auto* r_ptr = Distances[iat];
+      auto* dr_ptr = Displacements[iat].data();
+      #pragma omp target map(to: source_pos_ptr[:Nsources_padded*D]) map(from: r_ptr[:Nsources_padded], dr_ptr[:Nsources_padded*D])
+      {
+        T pos[3] = {x, y, z};
+        DTD_BConds<T, D, SC>::computeDistancesOffload(pos,
+                                                      source_pos_ptr,
+                                                      r_ptr,
+                                                      dr_ptr,
+                                                      Nsources_padded,
+                                                      0,
+                                                      Nsources_local);
+      }
+    }
   }
 
   /** evaluate the iat-row with the current position
