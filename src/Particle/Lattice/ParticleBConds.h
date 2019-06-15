@@ -101,7 +101,7 @@ struct DTD_BConds<T, 3, PPPG + SOA_OFFSET>
 {
   T g00, g10, g20, g01, g11, g21, g02, g12, g22;
   T r00, r10, r20, r01, r11, r21, r02, r12, r22;
-  VectorSoAContainer<T, 3> corners;
+  TinyVector<TinyVector<T, 8>, 3> corners;
 
   DTD_BConds(const CrystalLattice<T, 3>& lat)
   {
@@ -139,26 +139,29 @@ struct DTD_BConds<T, 3, PPPG + SOA_OFFSET>
     constexpr T minusone(-1);
     constexpr T zero(0);
 
-    corners.resize(8);
-    corners(0) = zero;
-    corners(1) = minusone * (rb[0]);
-    corners(2) = minusone * (rb[1]);
-    corners(3) = minusone * (rb[2]);
-    corners(4) = minusone * (rb[0] + rb[1]);
-    corners(5) = minusone * (rb[0] + rb[2]);
-    corners(6) = minusone * (rb[1] + rb[2]);
-    corners(7) = minusone * (rb[0] + rb[1] + rb[2]);
-    const T* restrict cellx = corners.data(0);
-    const T* restrict celly = corners.data(1);
-    const T* restrict cellz = corners.data(2);
+    for(int idim=0; idim<3; idim++)
+    {
+      auto& corners_dim = corners[idim];
+      corners_dim[0] = zero;
+      corners_dim[1] = minusone * (rb[0][idim]);
+      corners_dim[2] = minusone * (rb[1][idim]);
+      corners_dim[3] = minusone * (rb[2][idim]);
+      corners_dim[4] = minusone * (rb[0][idim] + rb[1][idim]);
+      corners_dim[5] = minusone * (rb[0][idim] + rb[2][idim]);
+      corners_dim[6] = minusone * (rb[1][idim] + rb[2][idim]);
+      corners_dim[7] = minusone * (rb[0][idim] + rb[1][idim] + rb[2][idim]);
+    }
+    const T* restrict cellx = corners[0].data();
+    const T* restrict celly = corners[1].data();
+    const T* restrict cellz = corners[2].data();
     #pragma omp target enter data map(to:this[:1], cellx[:8], celly[:8], cellz[:8])
   }
 
   ~DTD_BConds()
   {
-    const T* restrict cellx = corners.data(0);
-    const T* restrict celly = corners.data(1);
-    const T* restrict cellz = corners.data(2);
+    const T* restrict cellx = corners[0].data();
+    const T* restrict celly = corners[1].data();
+    const T* restrict cellz = corners[2].data();
     #pragma omp target exit data map(delete:this[:1], cellx[:8], celly[:8], cellz[:8])
   }
 
@@ -183,12 +186,9 @@ struct DTD_BConds<T, 3, PPPG + SOA_OFFSET>
     T* restrict dy = temp_dr.data(1);
     T* restrict dz = temp_dr.data(2);
 
-    const T* restrict cellx = corners.data(0);
-    ASSUME_ALIGNED(cellx);
-    const T* restrict celly = corners.data(1);
-    ASSUME_ALIGNED(celly);
-    const T* restrict cellz = corners.data(2);
-    ASSUME_ALIGNED(cellz);
+    const T* restrict cellx = corners[0].data();
+    const T* restrict celly = corners[1].data();
+    const T* restrict cellz = corners[2].data();
 
     constexpr T minusone(-1);
     constexpr T one(1);
