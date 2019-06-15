@@ -148,6 +148,18 @@ struct DTD_BConds<T, 3, PPPG + SOA_OFFSET>
     corners(5) = minusone * (rb[0] + rb[2]);
     corners(6) = minusone * (rb[1] + rb[2]);
     corners(7) = minusone * (rb[0] + rb[1] + rb[2]);
+    const T* restrict cellx = corners.data(0);
+    const T* restrict celly = corners.data(1);
+    const T* restrict cellz = corners.data(2);
+    #pragma omp target enter data map(to:this[:1], cellx[:8], celly[:8], cellz[:8])
+  }
+
+  ~DTD_BConds()
+  {
+    const T* restrict cellx = corners.data(0);
+    const T* restrict celly = corners.data(1);
+    const T* restrict cellz = corners.data(2);
+    #pragma omp target exit data map(delete:this[:1], cellx[:8], celly[:8], cellz[:8])
   }
 
   template<typename PT, typename RSoA>
@@ -180,7 +192,10 @@ struct DTD_BConds<T, 3, PPPG + SOA_OFFSET>
 
     constexpr T minusone(-1);
     constexpr T one(1);
-    #pragma omp simd aligned(temp_r, px, py, pz, dx, dy, dz)
+    //#pragma omp simd aligned(temp_r, px, py, pz, dx, dy, dz)
+    #pragma omp target teams distribute parallel for simd \
+      map(always, to: px[first:last-first], py[first:last-first], pz[first:last-first]) \
+      map(always, from: temp_r[first:last-first], dx[first:last-first], dy[first:last-first], dz[first:last-first])
     for (int iat = first; iat < last; ++iat)
     {
       const T flip    = iat < flip_ind ? one : minusone;
