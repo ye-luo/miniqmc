@@ -126,15 +126,16 @@ struct DTD_BConds<T, 3, PPPG + SOA_OFFSET>
       for (int j = 0; j < 3; ++j)
         rbt(i, j) = rb[i][j];
     Tensor<T, 3> g = inverse(rbt);
-    g00            = g(0);
-    g10            = g(3);
-    g20            = g(6);
-    g01            = g(1);
-    g11            = g(4);
-    g21            = g(7);
-    g02            = g(2);
-    g12            = g(5);
-    g22            = g(8);
+
+    g00 = g(0);
+    g10 = g(3);
+    g20 = g(6);
+    g01 = g(1);
+    g11 = g(4);
+    g21 = g(7);
+    g02 = g(2);
+    g12 = g(5);
+    g22 = g(8);
 
     constexpr T minusone(-1);
     constexpr T zero(0);
@@ -151,18 +152,12 @@ struct DTD_BConds<T, 3, PPPG + SOA_OFFSET>
       corners_dim[6] = minusone * (rb[1][idim] + rb[2][idim]);
       corners_dim[7] = minusone * (rb[0][idim] + rb[1][idim] + rb[2][idim]);
     }
-    const T* restrict cellx = corners[0].data();
-    const T* restrict celly = corners[1].data();
-    const T* restrict cellz = corners[2].data();
-    #pragma omp target enter data map(to:this[:1], cellx[:8], celly[:8], cellz[:8])
+    #pragma omp target enter data map(to:this[:1])
   }
 
   ~DTD_BConds()
   {
-    const T* restrict cellx = corners[0].data();
-    const T* restrict celly = corners[1].data();
-    const T* restrict cellz = corners[2].data();
-    #pragma omp target exit data map(delete:this[:1], cellx[:8], celly[:8], cellz[:8])
+    #pragma omp target exit data map(delete:this[:1])
   }
 
   template<typename PT, typename RSoA>
@@ -186,9 +181,9 @@ struct DTD_BConds<T, 3, PPPG + SOA_OFFSET>
     T* restrict dy = temp_dr.data(1);
     T* restrict dz = temp_dr.data(2);
 
-    const T* restrict cellx = corners[0].data();
-    const T* restrict celly = corners[1].data();
-    const T* restrict cellz = corners[2].data();
+    const auto& corners_x = corners[0];
+    const auto& corners_y = corners[1];
+    const auto& corners_z = corners[2];
 
     constexpr T minusone(-1);
     constexpr T one(1);
@@ -216,18 +211,18 @@ struct DTD_BConds<T, 3, PPPG + SOA_OFFSET>
 #pragma unroll(7)
       for (int c = 1; c < 8; ++c)
       {
-        const T x  = delx + cellx[c];
-        const T y  = dely + celly[c];
-        const T z  = delz + cellz[c];
+        const T x  = delx + corners_x[c];
+        const T y  = dely + corners_y[c];
+        const T z  = delz + corners_z[c];
         const T r2 = x * x + y * y + z * z;
         ic         = (r2 < rmin) ? c : ic;
         rmin       = (r2 < rmin) ? r2 : rmin;
       }
 
       temp_r[iat] = std::sqrt(rmin);
-      dx[iat]     = flip * (delx + cellx[ic]);
-      dy[iat]     = flip * (dely + celly[ic]);
-      dz[iat]     = flip * (delz + cellz[ic]);
+      dx[iat]     = flip * (delx + corners_x[ic]);
+      dy[iat]     = flip * (dely + corners_y[ic]);
+      dz[iat]     = flip * (delz + corners_z[ic]);
     }
   }
 };
