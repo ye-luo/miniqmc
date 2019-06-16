@@ -82,26 +82,34 @@ struct DistanceTableBA : public DTD_BConds<T, D, SC>, public DistanceTableData
     auto* target_pos_ptr = P.RSoA.data();
     const auto* source_pos_ptr = Origin->RSoA.data();
     auto* r_dr_ptr = memoryPool.data();
-    #pragma omp target teams distribute \
+
+    const int ChunkSizePerTeam = 128;
+    const int NumTeams         = (Nsources + ChunkSizePerTeam - 1) / ChunkSizePerTeam;
+
+    #pragma omp target teams distribute collapse(2)\
       map(to: source_pos_ptr[:Nsources_padded*D], target_pos_ptr[:Ntargets_padded*D]) \
       map(always, from: r_dr_ptr[:memoryPool.size()])
     for (int iat = 0; iat < Ntargets; ++iat)
-    {
-      T pos[D];
-      for(int idim = 0; idim<D; idim++)
-        pos[idim] = target_pos_ptr[idim*Ntargets_padded + iat];
+      for (int team_id = 0; team_id < NumTeams; team_id++)
+      {
+        const int first = ChunkSizePerTeam * team_id;
+        const int last  = (first + ChunkSizePerTeam) > Nsources_local? Nsources_local : first + ChunkSizePerTeam;
 
-      auto* r_iat_ptr = r_dr_ptr + Nsources_padded * iat;
-      auto* dr_iat_ptr = r_dr_ptr + Nsources_padded * Ntargets + Nsources_padded * D * iat;
+        T pos[D];
+        for(int idim = 0; idim<D; idim++)
+          pos[idim] = target_pos_ptr[idim*Ntargets_padded + iat];
 
-      DTD_BConds<T, D, SC>::computeDistancesOffload(pos,
-                                                    source_pos_ptr,
-                                                    r_iat_ptr,
-                                                    dr_iat_ptr,
-                                                    Nsources_padded,
-                                                    0,
-                                                    Nsources_local);
-    }
+        auto* r_iat_ptr = r_dr_ptr + Nsources_padded * iat;
+        auto* dr_iat_ptr = r_dr_ptr + Nsources_padded * Ntargets + Nsources_padded * D * iat;
+
+        DTD_BConds<T, D, SC>::computeDistancesOffload(pos,
+                                                      source_pos_ptr,
+                                                      r_iat_ptr,
+                                                      dr_iat_ptr,
+                                                      Nsources_padded,
+                                                      first,
+                                                      last);
+      }
   }
 
   /** evaluate the iat-row with the current position
