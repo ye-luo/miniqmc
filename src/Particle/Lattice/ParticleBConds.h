@@ -175,9 +175,9 @@ struct DTD_BConds<T, 3, PPPG + SOA_OFFSET>
     T* restrict dy = temp_dr.data(1);
     T* restrict dz = temp_dr.data(2);
 
-    const auto& corners_x = corners[0];
-    const auto& corners_y = corners[1];
-    const auto& corners_z = corners[2];
+    const auto& cellx = corners[0];
+    const auto& celly = corners[1];
+    const auto& cellz = corners[2];
 
     constexpr T minusone(-1);
     constexpr T one(1);
@@ -202,18 +202,18 @@ struct DTD_BConds<T, 3, PPPG + SOA_OFFSET>
 #pragma unroll(7)
       for (int c = 1; c < 8; ++c)
       {
-        const T x  = delx + corners_x[c];
-        const T y  = dely + corners_y[c];
-        const T z  = delz + corners_z[c];
+        const T x  = delx + cellx[c];
+        const T y  = dely + celly[c];
+        const T z  = delz + cellz[c];
         const T r2 = x * x + y * y + z * z;
         ic         = (r2 < rmin) ? c : ic;
         rmin       = (r2 < rmin) ? r2 : rmin;
       }
 
       temp_r[iat] = std::sqrt(rmin);
-      dx[iat]     = flip * (delx + corners_x[ic]);
-      dy[iat]     = flip * (dely + corners_y[ic]);
-      dz[iat]     = flip * (delz + corners_z[ic]);
+      dx[iat]     = flip * (delx + cellx[ic]);
+      dy[iat]     = flip * (dely + celly[ic]);
+      dz[iat]     = flip * (delz + cellz[ic]);
     }
   }
 
@@ -238,9 +238,9 @@ struct DTD_BConds<T, 3, PPPG + SOA_OFFSET>
     T* restrict dy = temp_dr + padded_size;
     T* restrict dz = temp_dr + padded_size * 2;
 
-    const auto& corners_x = corners[0];
-    const auto& corners_y = corners[1];
-    const auto& corners_z = corners[2];
+    const auto& cellx = corners[0];
+    const auto& celly = corners[1];
+    const auto& cellz = corners[2];
 
     constexpr T minusone(-1);
     constexpr T one(1);
@@ -265,18 +265,18 @@ struct DTD_BConds<T, 3, PPPG + SOA_OFFSET>
 #pragma unroll(7)
       for (int c = 1; c < 8; ++c)
       {
-        const T x  = delx + corners_x[c];
-        const T y  = dely + corners_y[c];
-        const T z  = delz + corners_z[c];
+        const T x  = delx + cellx[c];
+        const T y  = dely + celly[c];
+        const T z  = delz + cellz[c];
         const T r2 = x * x + y * y + z * z;
         ic         = (r2 < rmin) ? c : ic;
         rmin       = (r2 < rmin) ? r2 : rmin;
       }
 
       temp_r[iat] = std::sqrt(rmin);
-      dx[iat]     = flip * (delx + corners_x[ic]);
-      dy[iat]     = flip * (dely + corners_y[ic]);
-      dz[iat]     = flip * (delz + corners_z[ic]);
+      dx[iat]     = flip * (delx + cellx[ic]);
+      dy[iat]     = flip * (dely + celly[ic]);
+      dz[iat]     = flip * (delz + cellz[ic]);
     }
   }
 };
