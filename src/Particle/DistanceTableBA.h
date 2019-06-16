@@ -86,7 +86,7 @@ struct DistanceTableBA : public DTD_BConds<T, D, SC>, public DistanceTableData
     const int ChunkSizePerTeam = 128;
     const int NumTeams         = (Nsources + ChunkSizePerTeam - 1) / ChunkSizePerTeam;
 
-    #pragma omp target teams distribute collapse(2)\
+    #pragma omp target teams distribute collapse(2) num_teams(Ntargets*NumTeams) thread_limit(ChunkSizePerTeam)\
       map(to: source_pos_ptr[:Nsources_padded*D], target_pos_ptr[:Ntargets_padded*D]) \
       map(always, from: r_dr_ptr[:memoryPool.size()])
     for (int iat = 0; iat < Ntargets; ++iat)
