@@ -282,6 +282,7 @@ void ParticleSet::update(bool skipSK)
   RSoA.copyIn(R);
   for (int i = 0; i < DistTables.size(); i++)
     DistTables[i]->evaluate(*this);
+  #pragma omp taskwait
   activePtcl = -1;
 }
 
