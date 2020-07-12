@@ -323,7 +323,6 @@ void einspline_spo_omp<T>::evaluate_vgh(const ParticleSet& P, int iat)
       T a[4], b[4], c[4], da[4], db[4], dc[4], d2a[4], d2b[4], d2c[4];
       spline2::computeLocationAndFractional(spline_m, x, y, z, ix, iy, iz, a, b, c, da, db, dc, d2a, d2b, d2c);
 
-      PRAGMA_OFFLOAD("omp parallel")
       spline2offload::evaluate_vgh_v2(spline_m, ix, iy, iz, a, b, c, da, db, dc, d2a, d2b, d2c,
                                       offload_scratch_ptr + first, padded_size, first, last);
     }
@@ -421,7 +420,6 @@ void einspline_spo_omp<T>::multi_evaluate_vgh(const std::vector<SPOSet*>& spo_li
                                               pos_scratch_ptr[iw * 3 + 2], ix, iy, iz, a, b, c, da, db, dc, d2a, d2b,
                                               d2c);
 
-        PRAGMA_OFFLOAD("omp parallel")
         spline2offload::evaluate_vgh_v2(spline_m, ix, iy, iz, a, b, c, da, db, dc, d2a, d2b, d2c,
                                         multi_offload_scratch_ptr + iw * vgh_dim * padded_size + first, padded_size,
                                         first, last);

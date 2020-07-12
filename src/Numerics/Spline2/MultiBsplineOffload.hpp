@@ -302,7 +302,7 @@ evaluate_vgh_v2(const typename bspline_traits<T, 3>::SplineType* restrict spline
   const intptr_t zs = spline_m->z_stride;
 
 #ifdef ENABLE_OFFLOAD
-  #pragma omp for nowait
+  #pragma omp parallel for simd
 #else
   #pragma omp simd aligned(val_grad_hess)
 #endif
