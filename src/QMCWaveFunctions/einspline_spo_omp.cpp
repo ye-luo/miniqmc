@@ -170,7 +170,6 @@ void einspline_spo_omp<T>::evaluate_v(const ParticleSet& P, int iat)
       int ix, iy, iz;
       T a[4], b[4], c[4];
       spline2::computeLocationAndFractional(spline_m, x, y, z, ix, iy, iz, a, b, c);
-      PRAGMA_OFFLOAD("omp parallel")
       spline2offload::evaluate_v_v2(spline_m, ix, iy, iz, a, b, c, psi_ptr + first, first, last);
     }
   }
@@ -254,14 +253,11 @@ void einspline_spo_omp<T>::evaluateDetRatios(const VirtualParticleSet& VP,
         T a[4], b[4], c[4];
         spline2::computeLocationAndFractional(spline_m, pos_scratch[iVP * 3], pos_scratch[iVP * 3 + 1],
                                               pos_scratch[iVP * 3 + 2], ix, iy, iz, a, b, c);
+        spline2offload::evaluate_v_v2(spline_m, ix, iy, iz, a, b, c, offload_scratch_iVP_ptr + first, first, last);
         T sum(0);
-        PRAGMA_OFFLOAD("omp parallel")
-        {
-          spline2offload::evaluate_v_v2(spline_m, ix, iy, iz, a, b, c, offload_scratch_iVP_ptr + first, first, last);
-          PRAGMA_OFFLOAD("omp for reduction(+:sum)")
-          for (int j = first; j < last; j++)
-            sum += offload_scratch_iVP_ptr[j] * psiinv_ptr[i * nSplinesPerBlock_local + j];
-        }
+        PRAGMA_OFFLOAD("omp parallel for reduction(+:sum)")
+        for (int j = first; j < last; j++)
+          sum += offload_scratch_iVP_ptr[j] * psiinv_ptr[i * nSplinesPerBlock_local + j];
         ratios_private_ptr[iVP * NumTeams + team_id] = sum;
       }
 

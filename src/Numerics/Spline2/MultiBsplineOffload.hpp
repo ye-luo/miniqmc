@@ -70,7 +70,7 @@ inline void evaluate_v_v2(const typename bspline_traits<T, 3>::SplineType* restr
   const intptr_t zs = spline_m->z_stride;
 
 #ifdef ENABLE_OFFLOAD
-  #pragma omp for nowait
+  #pragma omp parallel for
 #else
   #pragma omp simd aligned(vals)
 #endif
