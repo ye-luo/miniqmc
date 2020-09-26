@@ -309,7 +309,7 @@ void einspline_spo_omp<T>::evaluate_vgh(const ParticleSet& P, int iat)
     int padded_size                    = getAlignedSize<T>(nSplinesPerBlock);
 
 #ifdef ENABLE_OFFLOAD
-    #pragma omp target teams distribute num_teams(NumTeams) thread_limit(ChunkSizePerTeam) \
+    #pragma omp target teams distribute nowait num_teams(NumTeams) thread_limit(ChunkSizePerTeam) \
     map(always, from: offload_scratch_ptr[:vgh_dim * padded_size])
 #else
     #pragma omp parallel for
@@ -329,6 +329,7 @@ void einspline_spo_omp<T>::evaluate_vgh(const ParticleSet& P, int iat)
         spline2offload::evaluate_vgh_v2(spline_m, ix, iy, iz, a, b, c, da, db, dc, d2a, d2b, d2c,
                                         offload_scratch_ptr + first, padded_size, first, ind);
     }
+    #pragma omp taskwait
   }
 }
 
@@ -404,7 +405,7 @@ void einspline_spo_omp<T>::multi_evaluate_vgh(const std::vector<SPOSet*>& spo_li
     auto* multi_offload_scratch_ptr = multi_offload_scratch[i].data();
 
 #ifdef ENABLE_OFFLOAD
-    #pragma omp target teams distribute collapse(2) num_teams(nw* NumTeams) thread_limit(ChunkSizePerTeam) \
+    #pragma omp target teams distribute nowait collapse(2) num_teams(nw* NumTeams) thread_limit(ChunkSizePerTeam) \
       map(always, to: pos_scratch_ptr[:pos_scratch.size()]) \
       map(always, from: multi_offload_scratch_ptr[:vgh_dim * nw * padded_size])
 #else
@@ -430,6 +431,7 @@ void einspline_spo_omp<T>::multi_evaluate_vgh(const std::vector<SPOSet*>& spo_li
                                           first, ind);
       }
 
+    #pragma omp taskwait
     for (size_t iw = 0; iw < nw; iw++)
       std::copy_n(multi_offload_scratch_ptr + iw * vgh_dim * padded_size, padded_size * vgh_dim,
                   shadows[iw]->offload_scratch[i].data());
