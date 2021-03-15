@@ -406,7 +406,7 @@ void einspline_spo_omp<T>::multi_evaluate_vgh(const std::vector<SPOSet*>& spo_li
 #ifdef ENABLE_OFFLOAD
     #pragma omp target update to(pos_scratch_ptr[:pos_scratch.size()])
 
-    #pragma omp target teams distribute collapse(2) num_teams(nw* NumTeams) thread_limit(ChunkSizePerTeam)
+    #pragma omp target teams loop collapse(2) num_teams(nw* NumTeams) thread_limit(ChunkSizePerTeam)
 #else
     #pragma omp parallel for collapse(2)
 #endif
@@ -423,7 +423,7 @@ void einspline_spo_omp<T>::multi_evaluate_vgh(const std::vector<SPOSet*>& spo_li
                                               pos_scratch_ptr[iw * 3 + 2], ix, iy, iz, a, b, c, da, db, dc, d2a, d2b,
                                               d2c);
 
-        PRAGMA_OFFLOAD("omp parallel for")
+        PRAGMA_OFFLOAD("omp loop")
         for (int ind = 0; ind < last - first; ind++)
           spline2offload::evaluate_vgh_v2(spline_m, ix, iy, iz, a, b, c, da, db, dc, d2a, d2b, d2c,
                                           multi_offload_scratch_ptr + iw * vgh_dim * padded_size + first, padded_size,
