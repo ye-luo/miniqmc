@@ -403,9 +403,15 @@ void einspline_spo_omp<T>::multi_evaluate_vgh(const std::vector<SPOSet*>& spo_li
 
     if (host_ready)
     {
+#ifdef __NVCOMPILER_LLVM__
+      PRAGMA_OFFLOAD("omp target teams loop collapse(2) num_teams(nw* NumTeams) \
+                    map(always, to: pos_scratch_ptr[:pos_scratch.size()]) \
+                    map(always, from: multi_offload_scratch_ptr[:multi_offload_scratch[i].size()])")
+#else
       PRAGMA_OFFLOAD("omp target teams distribute collapse(2) num_teams(nw* NumTeams) thread_limit(ChunkSizePerTeam) \
                     map(always, to: pos_scratch_ptr[:pos_scratch.size()]) \
                     map(always, from: multi_offload_scratch_ptr[:multi_offload_scratch[i].size()])")
+#endif
       for (size_t iw = 0; iw < nw; iw++)
         for (int team_id = 0; team_id < NumTeams; team_id++)
         {
@@ -419,7 +425,11 @@ void einspline_spo_omp<T>::multi_evaluate_vgh(const std::vector<SPOSet*>& spo_li
                                                 pos_scratch_ptr[iw * 3 + 2], ix, iy, iz, a, b, c, da, db, dc, d2a, d2b,
                                                 d2c);
 
+#ifdef __NVCOMPILER_LLVM__
+          PRAGMA_OFFLOAD("omp loop")
+#else
           PRAGMA_OFFLOAD("omp parallel for")
+#endif
           for (int ind = 0; ind < last - first; ind++)
             spline2offload::evaluate_vgh_v2(spline_m, ix, iy, iz, a, b, c, da, db, dc, d2a, d2b, d2c,
                                             multi_offload_scratch_ptr + iw * vgh_dim * padded_size + first, padded_size,
@@ -433,8 +443,13 @@ void einspline_spo_omp<T>::multi_evaluate_vgh(const std::vector<SPOSet*>& spo_li
     else
     {
       // exactly the same as above but without D2H transfer
+#ifdef __NVCOMPILER_LLVM__
+      PRAGMA_OFFLOAD("omp target teams loop collapse(2) num_teams(nw* NumTeams) \
+                    map(always, to: pos_scratch_ptr[:pos_scratch.size()])")
+#else
       PRAGMA_OFFLOAD("omp target teams distribute collapse(2) num_teams(nw* NumTeams) thread_limit(ChunkSizePerTeam) \
                     map(always, to: pos_scratch_ptr[:pos_scratch.size()])")
+#endif
       for (size_t iw = 0; iw < nw; iw++)
         for (int team_id = 0; team_id < NumTeams; team_id++)
         {
@@ -448,7 +463,11 @@ void einspline_spo_omp<T>::multi_evaluate_vgh(const std::vector<SPOSet*>& spo_li
                                                 pos_scratch_ptr[iw * 3 + 2], ix, iy, iz, a, b, c, da, db, dc, d2a, d2b,
                                                 d2c);
 
+#ifdef __NVCOMPILER_LLVM__
+          PRAGMA_OFFLOAD("omp loop")
+#else
           PRAGMA_OFFLOAD("omp parallel for")
+#endif
           for (int ind = 0; ind < last - first; ind++)
             spline2offload::evaluate_vgh_v2(spline_m, ix, iy, iz, a, b, c, da, db, dc, d2a, d2b, d2c,
                                             multi_offload_scratch_ptr + iw * vgh_dim * padded_size + first, padded_size,
