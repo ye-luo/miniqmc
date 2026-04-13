@@ -20,7 +20,7 @@ else()
 endif()
 target_link_libraries(platform_omptarget_LA PUBLIC platform_omptarget_runtime)
 
-if(QMC_ENABLE_CUDA AND QMC_OFFLOAD_MEM_ASSOCIATED)
+if(ENABLE_CUDA AND QMC_OFFLOAD_MEM_ASSOCIATED)
   target_link_libraries(platform_omptarget_runtime PUBLIC platform_cuda_runtime)
 endif()
 

@@ -22,9 +22,9 @@
 #define QMCPLUSPLUS_DUAL_ALLOCATOR_ALIASES_HPP
 
 #include "PinnedAllocator.h"
-#if (defined(QMC_ENABLE_CUDA) || defined(QMC_ENABLE_SYCL)) && !defined(ENABLE_OFFLOAD)
+#if (defined(ENABLE_CUDA) || defined(QMC_ENABLE_SYCL)) && !defined(ENABLE_OFFLOAD)
 #include "DualAllocator.hpp"
-#if defined(QMC_ENABLE_CUDA)
+#if defined(ENABLE_CUDA)
 namespace qmcplusplus
 {
   template<typename T>

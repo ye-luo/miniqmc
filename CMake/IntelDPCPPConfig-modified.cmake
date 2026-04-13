@@ -207,7 +207,7 @@ if(SYCL_COMPILER)
   # Find Include path from binary
   find_path(SYCL_INCLUDE_DIR
     NAMES
-      CL/sycl.hpp
+      sycl.hpp
     HINTS
       ${SYCL_PACKAGE_DIR}/include/sycl
     NO_DEFAULT_PATH
@@ -239,7 +239,7 @@ if(WIN32)
   list(APPEND SYCL_FLAGS "/EHsc")
 endif()
 
-set(SYCL_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SYCL_FLAGS}")
+set(SYCL_CXX_FLAGS "${SYCL_FLAGS}")
 
 # And now test the assumptions.
 

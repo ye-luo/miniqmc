@@ -339,8 +339,5 @@ typedef QMCTraits::ValueType ValueType;
 typedef QMCTraits::QTFull::ValueType mValueType;
 
 template class DiracDeterminant<>;
-#if defined(ENABLE_CUDA)
-template class DiracDeterminant<DelayedUpdateCUDA<ValueType, mValueType>>;
-#endif
 
 } // namespace qmcplusplus

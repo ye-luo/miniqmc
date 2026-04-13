@@ -46,22 +46,22 @@ if(QMC_CUDA)
 endif(QMC_CUDA)
 
 # include CUDA platform
-if(QMC_ENABLE_CUDA)
+if(ENABLE_CUDA)
   add_subdirectory(CUDA)
   target_link_libraries(platform_runtime PUBLIC platform_cuda_runtime)
-endif(QMC_ENABLE_CUDA)
+endif(ENABLE_CUDA)
 
 # include ROCm platform
-if(QMC_ENABLE_ROCM)
+if(ENABLE_ROCM)
   add_subdirectory(ROCm)
   target_link_libraries(platform_runtime PUBLIC platform_rocm_runtime)
-endif(QMC_ENABLE_ROCM)
+endif(ENABLE_ROCM)
 
 # include SYCL platform
-if(QMC_ENABLE_SYCL)
+if(ENABLE_SYCL)
   add_subdirectory(SYCL)
   target_link_libraries(platform_runtime PUBLIC platform_sycl_runtime)
-endif(QMC_ENABLE_SYCL)
+endif(ENABLE_SYCL)
 
 if(BUILD_UNIT_TESTS)
   add_subdirectory(tests)

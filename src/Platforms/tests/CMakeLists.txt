@@ -11,7 +11,7 @@
 
 add_subdirectory(CPU)
 
-if(QMC_ENABLE_CUDA)
+if(ENABLE_CUDA)
   add_subdirectory(CUDA)
 endif()
 

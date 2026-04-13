@@ -31,6 +31,12 @@ message(STATUS "CMAKE_BUILD_TYPE is ${CMAKE_BUILD_TYPE}")
 # Directory where customize cmake files reside
 ######################################################################
 set(PROJECT_CMAKE ${miniqmc_SOURCE_DIR}/CMake)
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_CMAKE})
+
+# add the automatically determined parts of the RPATH
+# which point to directories outside the build tree to the install RPATH
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+include(AddRPATH)
 
 ######################################################################
 # build include and library paths required for the projects
@@ -95,6 +101,13 @@ set(QMC_COMPLEX
     0
     CACHE STRING "Build for complex binary")
 
+if(DEFINED QMC_ENABLE_CUDA OR DEFINED QMC_ENABLE_ROCM OR DEFINED QMC_CUDA2HIP OR DEFINED QMC_ENABLE_SYCL OR DEFINED ENABLE_OFFLOAD)
+  message(
+	  FATAL_ERROR "QMC_ENABLE_CUDA, QMC_ENABLE_ROCM, QMC_CUDA2HIP, QMC_ENABLE_SYCL and ENABLE_OFFLOAD CMake options are removed. "
+                "Use QMC_GPU instead. See details of this option explained in the user guide. "
+                "When not building from scratch, their cached entries in CMakeCache.txt needs to be removed.")
+endif()
+
 ######################################################################
 # Standard test
 ######################################################################
@@ -117,38 +130,21 @@ check_function_exists(posix_memalign HAVE_POSIX_MEMALIGN)
 set(BUILD_UNIT_TESTS
     1
     CACHE BOOL "Build unit tests")
-set(BUILD_LMYENGINE_INTERFACE
-    1
-    CACHE BOOL "Build LMY engine")
-if(MIXED_PRECISION AND BUILD_LMYENGINE_INTERFACE)
-  message(STATUS "LMY engine is not compatiable with CPU mixed precision build! Disabling LMY engine")
-  set(BUILD_LMYENGINE_INTERFACE 0)
-endif()
-set(BUILD_AFQMC
-    0
-    CACHE BOOL "Build with AFQMC")
-# AFQMC requires MPI
-if(BUILD_AFQMC AND NOT QMC_MPI)
-  message(FATAL_ERROR "AFQMC requires building with MPI (QMC_MPI=1). Set BUILD_AFQMC=0 or configure MPI.")
-endif()
-
-set(BUILD_FCIQMC
-    0
-    CACHE BOOL "Build with FCIQMC")
 set(QMC_BUILD_STATIC
     0
     CACHE BOOL "Link to static libraries")
 set(ENABLE_TIMERS
     1
     CACHE BOOL "Enable internal timers")
-option(ENABLE_OFFLOAD "Enable OpenMP offload" OFF)
-option(QMC_ENABLE_ROCM "Enable GPU support through ROCM" OFF)
-if(QMC_ENABLE_ROCM)
-  set(QMC_ENABLE_CUDA ON)
-  set(QMC_CUDA2HIP ON)
+
+if(DEFINED ENABLE_CUDA OR DEFINED ENABLE_ROCM OR DEFINED QMC_CUDA2HIP OR DEFINED ENABLE_SYCL OR DEFINED ENABLE_OFFLOAD)
+  message(
+    FATAL_ERROR "ENABLE_CUDA, ENABLE_ROCM, QMC_CUDA2HIP, ENABLE_SYCL and ENABLE_OFFLOAD CMake options are removed. "
+                "Use QMC_GPU instead. See details of this option explained in the user guide. "
+                "When not building from scratch, their cached entries in CMakeCache.txt needs to be removed.")
 endif()
-option(QMC_ENABLE_CUDA "Enable CUDA acceleration" OFF)
-option(QMC_ENABLE_SYCL "Enable SYCL offload" OFF)
+
+include(DetermineGPUFeatures)
 # Use CMake object library targets to workaround clang linker not being able to handle fat
 # binary archives which contain both host and device codes, for example OpenMP offload regions.
 # CMake does not propagate indirect object files by design.
@@ -156,24 +152,23 @@ option(QMC_ENABLE_SYCL "Enable SYCL offload" OFF)
 cmake_dependent_option(USE_OBJECT_TARGET "Use CMake object library target" OFF "ENABLE_OFFLOAD" OFF)
 
 include(DetermineDeviceArchitectures)
-message(STATUS "GPU device architectures: ${QMC_GPU_ARCHS}")
 
 ######################################################################
 # Sanitizer options
 ######################################################################
 
 # Add optional sanitizers ASAN, UBSAN, MSAN
-set(VALID_SANITIZERS "none" "asan" "ubsan" "tsan" "msan")
-set(ENABLE_SANITIZER
-    "none"
-    CACHE STRING "none,asan,ubsan,tsan,msan")
+set(VALID_SANITIZERS "asan" "ubsan" "tsan" "msan")
+set(ENABLE_SANITIZER "" CACHE STRING "asan,ubsan,tsan,msan")
 set_property(CACHE ENABLE_SANITIZER PROPERTY STRINGS ${VALID_SANITIZERS})
 
-# Perform sanitizer option check, only works in debug mode
-if(NOT ENABLE_SANITIZER IN_LIST VALID_SANITIZERS)
-  message(FATAL_ERROR "Invalid -DENABLE_SANITIZER=${ENABLE_SANITIZER}, value must be one of ${VALID_SANITIZERS}")
-else()
-  message(STATUS "Enable sanitizer ENABLE_SANITIZER=${ENABLE_SANITIZER}")
+if(ENABLE_SANITIZER)
+  # Perform sanitizer option check, only works in debug mode
+  if(NOT ENABLE_SANITIZER IN_LIST VALID_SANITIZERS)
+    message(FATAL_ERROR "Invalid -DENABLE_SANITIZER=${ENABLE_SANITIZER}, value must be one of ${VALID_SANITIZERS}")
+  else()
+    message(STATUS "Enable sanitizer ENABLE_SANITIZER=${ENABLE_SANITIZER}")
+  endif()
 endif()
 
 ######################################################################
@@ -196,6 +191,25 @@ endif()
 ######################################################################
 # Set the compiler specific options/flags
 ######################################################################
+#-------------------------------------------------------------------------------
+# Check for OpenMP compiler support
+#
+# The CMake OpenMP package is *only* used to to verify compiler support.
+# No feature of the package is used and we customize OpenMP options directly
+# on a per vendor/compiler basis.
+#-------------------------------------------------------------------------------
+if(QMC_OMP)
+  find_package(OpenMP)
+  if(NOT OpenMP_FOUND)
+    message(
+      FATAL_ERROR "No compiler support for OpenMP found. Switching to a compiler with OpenMP support is recommended."
+                  "Alternatively, you will need to run CMake configure with -DQMC_OMP=OFF")
+  endif()
+
+  # explicitly set OpenMP runtime library rpath like other normal libraries.
+  AddRPATH("OpenMP" ${OpenMP_CXX_LIBRARIES})
+endif(QMC_OMP)
+
 include(TestCXXMainCompiles)
 TestCXXMainCompiles("Before_Customization")
 if(CMAKE_TOOLCHAIN_FILE)
@@ -279,33 +293,27 @@ if(alignment_remainder)
 endif()
 message(STATUS "QMC_SIMD_ALIGNMENT is set to ${QMC_SIMD_ALIGNMENT}")
 
-#---------------------------------------------------------
-# Determine if OpenMP taskloop works with the CXX compiler
-#---------------------------------------------------------
-include(CMake/TestOpenMPtaskloop.cmake)
-option(ENABLE_OMP_TASKLOOP "Enable OpenMP taskloop" ${OMP_TASKLOOP_OKAY})
-message(STATUS "ENABLE_OMP_TASKLOOP is set to ${ENABLE_OMP_TASKLOOP}")
+if(QMC_OMP)
+  #---------------------------------------------------------
+  # Determine if OpenMP taskloop works with the CXX compiler
+  #---------------------------------------------------------
+  include(TestOpenMPtaskloop)
+  option(ENABLE_OMP_TASKLOOP "Enable OpenMP taskloop" ${OMP_TASKLOOP_OKAY})
+  message(STATUS "ENABLE_OMP_TASKLOOP is set to ${ENABLE_OMP_TASKLOOP}")
 
-#---------------------------------------------------------
-# Set up OpenMP offload compile options
-#---------------------------------------------------------
-set(QMC_OFFLOAD_MEM_ASSOCIATED_DEFAULT OFF)
-if(ENABLE_OFFLOAD AND DEFINED OPENMP_OFFLOAD_COMPILE_OPTIONS)
-  message(STATUS "OpenMP offload CXX flags: ${OPENMP_OFFLOAD_COMPILE_OPTIONS}")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OPENMP_OFFLOAD_COMPILE_OPTIONS}")
-  if(${COMPILER} MATCHES "Clang"
-     AND OPENMP_OFFLOAD_COMPILE_OPTIONS MATCHES "gfx"
-     AND QMC_CUDA2HIP)
-    # As of 11/2021, QMC_OFFLOAD_MEM_ASSOCIATED=ON is needed for AMD and mainline LLVM compilers
-    # when using OpenMP offload to AMD GPU together with HIP.
-    set(QMC_OFFLOAD_MEM_ASSOCIATED_DEFAULT ON)
+  #---------------------------------------------------------
+  # Set up OpenMP offload compile options
+  #---------------------------------------------------------
+  if(ENABLE_OFFLOAD AND DEFINED OPENMP_OFFLOAD_COMPILE_OPTIONS)
+    message(STATUS "OpenMP offload CXX flags: ${OPENMP_OFFLOAD_COMPILE_OPTIONS}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OPENMP_OFFLOAD_COMPILE_OPTIONS}")
+    if(DEFINED OpenMP_OFFLOAD_LINKER_FLAGS)
+      set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_OFFLOAD_LINKER_FLAGS}")
+    endif()
   endif()
+
   TestCXXMainCompiles("With_OpenMP")
 endif()
-# Some OpenMP offload runtime libraries have composibility issue with a vendor native runtime.
-# A workaround is making the vendor native runtime responsible for memory allocations and OpenMP associate/disassocate them.
-cmake_dependent_option(QMC_OFFLOAD_MEM_ASSOCIATED "Manage OpenMP memory allocations via the vendor runtime"
-                       ${QMC_OFFLOAD_MEM_ASSOCIATED_DEFAULT} "ENABLE_OFFLOAD;QMC_ENABLE_CUDA" OFF)
 
 #-------------------------------------------------------------------
 # Check MPI installation. MPI is treated as a part of compiler
@@ -394,14 +402,14 @@ endif(QMC_MPI)
 ####################################################################
 # list of libraries to be linked with the main applications using I/O
 
-if(QMC_ENABLE_CUDA AND NOT QMC_CUDA2HIP)
+if(ENABLE_CUDA AND NOT QMC_CUDA2HIP)
   find_package(CUDAToolkit)
 endif()
 
 #-------------------------------------------------------------------
 #  set up ROCM compiler options and libraries
 #-------------------------------------------------------------------
-if(QMC_ENABLE_ROCM)
+if(ENABLE_ROCM)
   # use FindHIP.cmake to confirm ROCM_ROOT but FindHIP.cmake module is not used
   if(ROCM_ROOT)
     message(STATUS "Using ROCM_ROOT: ${ROCM_ROOT}")
@@ -411,15 +419,15 @@ if(QMC_ENABLE_ROCM)
   find_package(hipblas CONFIG REQUIRED)
   find_package(rocsolver CONFIG REQUIRED)
   option(QMC_DISABLE_HIP_HOST_REGISTER "Disable hipHostRegister for pinning host memory" ON)
-endif(QMC_ENABLE_ROCM)
+endif(ENABLE_ROCM)
 
 #-------------------------------------------------------------------
 #  set up SYCL compiler options and libraries
 #-------------------------------------------------------------------
-if(QMC_ENABLE_SYCL)
+if(ENABLE_SYCL)
   # require 3.20 to recognize IntelLLVM compiler ID and check accurate version numbers.
   if(CMAKE_VERSION VERSION_LESS 3.20.0)
-    message(FATAL_ERROR "QMC_ENABLE_SYCL require CMake 3.20.0 or later")
+    message(FATAL_ERROR "ENABLE_SYCL require CMake 3.20.0 or later")
   endif()
   if(NOT CMAKE_CXX_COMPILER_ID MATCHES "IntelLLVM")
     message(FATAL_ERROR "QMCPACK only supports SYCL with LLVM-based Intel compiler (icpx).")
@@ -429,7 +437,26 @@ if(QMC_ENABLE_SYCL)
   find_package(IntelDPCPP REQUIRED CONFIGS IntelDPCPPConfig-modified.cmake PATHS ${PROJECT_CMAKE})
   target_link_libraries(SYCL::host INTERFACE OneAPI::DPCPP-host)
   target_link_libraries(SYCL::device INTERFACE OneAPI::DPCPP-device)
-endif(QMC_ENABLE_SYCL)
+endif(ENABLE_SYCL)
+
+#-----------------------------------------------------
+#  Resolve Vendor and OpenMP runtime incompatibilities
+#-----------------------------------------------------
+# Some OpenMP offload runtime libraries have composibility issue with vendor native ones.
+# A workaround is making the vendor native runtime responsible for memory allocations and OpenMP associate/disassocate them.
+# CUDA/HIP/SYCL supported
+if(${COMPILER} MATCHES "Clang" AND QMC_CUDA2HIP AND ENABLE_OFFLOAD)
+  # Known issue HIP<5.5 https://github.com/ROCm/aomp/issues/253
+  # Known performance issue remains in 6.3.3
+  set(QMC_OFFLOAD_MEM_ASSOCIATED_DEFAULT ON)
+else()
+  set(QMC_OFFLOAD_MEM_ASSOCIATED_DEFAULT OFF)
+endif()
+cmake_dependent_option(QMC_OFFLOAD_MEM_ASSOCIATED "Use omp_target_associate_ptr instead of direct OpenMP offload maps in dual-space allocators"
+                       ${QMC_OFFLOAD_MEM_ASSOCIATED_DEFAULT} "ENABLE_OFFLOAD;ENABLE_CUDA OR ENABLE_SYCL" OFF)
+if(QMC_OFFLOAD_MEM_ASSOCIATED)
+  message(STATUS "Use omp_target_associate_ptr instead of direct OpenMP offload maps in dual-space allocators")
+endif()
 
 #-------------------------------------------------------------------
 # Check LAPACK/BLAS
@@ -570,7 +597,7 @@ if(ENABLE_GCOV)
 endif()
 
 # SETUP SANITIZERS FLAGS
-if(NOT "${ENABLE_SANITIZER}" STREQUAL "none")
+if(ENABLE_SANITIZER)
   if(NOT ${COMPILER} MATCHES "GNU" AND NOT ${COMPILER} MATCHES "Clang")
     message(FATAL_ERROR "-DENABLE_SANITIZER=${ENABLE_SANITIZER} only works with GNU or Clang compilers")
   endif()

@@ -26,9 +26,6 @@
 #include "QMCWaveFunctions/SPOSet.h"
 #include "Utilities/NewTimer.h"
 #include "QMCWaveFunctions/DelayedUpdate.h"
-#if defined(ENABLE_CUDA)
-#include "QMCWaveFunctions/DelayedUpdateCUDA.h"
-#endif
 
 namespace miniqmcreference
 {

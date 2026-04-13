@@ -24,11 +24,7 @@ namespace qmcplusplus
 
 typedef QMCTraits::RealType RealType;
 typedef QMCTraits::ValueType ValueType;
-#ifdef ENABLE_CUDA
-typedef DiracDeterminant<DelayedUpdateCUDA<ValueType, QMCTraits::QTFull::ValueType>> DetType;
-#else
 typedef DiracDeterminant<> DetType;
-#endif
 
 template<typename T1, typename T2>
 void check_matrix(Matrix<T1>& a, Matrix<T2>& b)

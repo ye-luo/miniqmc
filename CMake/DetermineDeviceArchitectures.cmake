@@ -63,10 +63,11 @@ function(verifyNVIDIAGPUconsistency)
 endfunction()
 
 # auto detect QMC_GPU_ARCHS if not set by user and GPU features are enabled.
-if(NOT QMC_GPU_ARCHS AND (QMC_ENABLE_CUDA OR QMC_ENABLE_ROCM))
-  if(QMC_ENABLE_ROCM)
+# CMAKE_CUDA/HIP_ARCHITECTURES are used as hints
+if(NOT QMC_GPU_ARCHS AND ENABLE_CUDA)
+  if(QMC_CUDA2HIP)
     detectAMDGPU()
-  elseif(QMC_ENABLE_CUDA)
+  else()
     detectNVIDIAGPU()
   endif()
 
@@ -82,12 +83,28 @@ endif()
 list(REMOVE_DUPLICATES QMC_GPU_ARCHS)
 
 # make sure QMC_GPU_ARCHS is consistent with CMAKE_HIP_ARCHITECTURES or CMAKE_CUDA_ARCHITECTURES.
-if(QMC_ENABLE_ROCM)
-  verifyAMDGPUconsistency()
-elseif(QMC_ENABLE_CUDA)
-  verifyNVIDIAGPUconsistency()
+if(ENABLE_CUDA)
+  if(QMC_CUDA2HIP)
+    verifyAMDGPUconsistency()
+  else()
+    verifyNVIDIAGPUconsistency()
+  endif()
 endif()
 
 set(QMC_GPU_ARCHS
     ${QMC_GPU_ARCHS}
     CACHE STRING "Accelerator device architectures" FORCE)
+
+if(QMC_GPU_ARCHS)
+  message(STATUS "GPU device architectures: ${QMC_GPU_ARCHS}")
+endif()
+
+# QMC_GPU_ARCHS is the single source of truth and thus overwrite CMAKE_CUDA/HIP_ARCHITECTURES
+if(ENABLE_CUDA)
+  if(QMC_CUDA2HIP)
+    set(CMAKE_HIP_ARCHITECTURES ${QMC_GPU_ARCHS} CACHE STRING "HIP architectures" FORCE)
+  else()
+    string(REPLACE "sm_" "" CUDA_ARCH_NUMBERS "${QMC_GPU_ARCHS}")
+    set(CMAKE_CUDA_ARCHITECTURES ${CUDA_ARCH_NUMBERS} CACHE STRING "CUDA architectures" FORCE)
+  endif()
+endif()

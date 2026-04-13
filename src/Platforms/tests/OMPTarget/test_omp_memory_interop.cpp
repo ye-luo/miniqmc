@@ -55,7 +55,7 @@ void test_vendor_device_memory_omp_access()
     sum += array_ptr[i];
   }
 
-#if defined(QMC_ENABLE_CUDA)
+#if defined(ENABLE_CUDA)
   cudaErrorCheck(cudaMemset(array_ptr, 0, array_size * sizeof(int)), "cudaMemset failed on ALLOC memory!");
 #endif
   CHECK(sum == (array_size - 1) * array_size / 2);
@@ -65,12 +65,12 @@ void test_vendor_device_memory_omp_access()
 TEST_CASE("memory_interop", "[openmp]")
 {
   std::cout << "test memory_interop map" << std::endl;
-#if defined(QMC_ENABLE_CUDA) || defined(QMC_ENABLE_SYCL)
+#if defined(ENABLE_CUDA) || defined(QMC_ENABLE_SYCL)
   test_pinned_memory_omp_access<int, PinnedAlignedAllocator<int>>();
 #endif
 
   std::cout << "test memory_interop vendor device alloc" << std::endl;
-#if defined(QMC_ENABLE_CUDA)
+#if defined(ENABLE_CUDA)
   test_vendor_device_memory_omp_access<int, CUDAAllocator<int>>();
 #endif
 
@@ -79,7 +79,7 @@ TEST_CASE("memory_interop", "[openmp]")
   //OMPallocator<int> alloc;
   //int* host = alloc.allocate(array_size);
   //int* array = alloc.get_device_ptr();
-#if defined(QMC_ENABLE_CUDA)
+#if defined(ENABLE_CUDA)
   cudaErrorCheck(cudaMemset(array, 0, array_size * sizeof(int)), "cudaMemset failed on omp_target_alloc memory!")
   REQUIRE(isCUDAPtrDevice(array));
 #endif

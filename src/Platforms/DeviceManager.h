@@ -16,7 +16,7 @@
 
 #include <memory>
 #include <config.h>
-#if defined(QMC_ENABLE_CUDA)
+#if defined(ENABLE_CUDA)
 #include "CUDA/CUDADeviceManager.h"
 #endif
 #if defined(ENABLE_OFFLOAD)
@@ -62,7 +62,7 @@ public:
   int getDefaultDeviceNum() const { return default_device_num; }
   int getNumDevices() const { return num_devices; }
 
-#if defined(QMC_ENABLE_CUDA)
+#if defined(ENABLE_CUDA)
   const auto& getCUDADM() const { return cuda_dm_; }
 #endif
 #if defined(ENABLE_OFFLOAD)
@@ -86,7 +86,7 @@ private:
   int default_device_num;
   /// the number of devices. Must be defined before platform device manager objects
   int num_devices;
-#if defined(QMC_ENABLE_CUDA)
+#if defined(ENABLE_CUDA)
   /// CUDA device manager object
   CUDADeviceManager cuda_dm_;
 #endif

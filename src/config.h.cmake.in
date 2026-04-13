@@ -50,7 +50,7 @@
 #cmakedefine QMC_OFFLOAD_MEM_ASSOCIATED @QMC_OFFLOAD_MEM_ASSOCIATED@
 
 /* Enable CUDA acceleration. */
-#cmakedefine QMC_ENABLE_CUDA @QMC_ENABLE_CUDA@
+#cmakedefine ENABLE_CUDA @ENABLE_CUDA@
 
 /* Enable CUDA2HIP. */
 #cmakedefine QMC_CUDA2HIP @QMC_CUDA2HIP@

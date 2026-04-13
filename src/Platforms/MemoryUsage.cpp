@@ -16,7 +16,7 @@
 #include <iomanip>
 #include "Host/sysutil.h"
 #include "OMPTarget/OMPallocator.hpp"
-#ifdef QMC_ENABLE_CUDA
+#ifdef ENABLE_CUDA
 #include "CUDA/CUDAallocator.hpp"
 #include "CUDA/CUDAruntime.hpp"
 #endif
@@ -34,7 +34,7 @@ void print_mem(const std::string& title, std::ostream& log)
   log << std::right;
   log << "Available memory on node 0, free + buffers : " << std::setw(7) << (freemem() >> 20) << " MiB" << std::endl;
   log << "Memory footprint by rank 0 on node 0       : " << std::setw(7) << (memusage() >> 10) << " MiB" << std::endl;
-#ifdef QMC_ENABLE_CUDA
+#ifdef ENABLE_CUDA
   log << "Device memory allocated via CUDA allocator : " << std::setw(7) << (getCUDAdeviceMemAllocated() >> 20)
       << " MiB" << std::endl;
   log << "Free memory available on default device    : " << std::setw(7) << (getCUDAdeviceFreeMem() >> 20) << " MiB"

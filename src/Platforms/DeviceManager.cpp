@@ -21,7 +21,7 @@ namespace qmcplusplus
 DeviceManager::DeviceManager(int local_rank, int local_size)
     : default_device_num(-1),
       num_devices(0)
-#if defined(QMC_ENABLE_CUDA)
+#if defined(ENABLE_CUDA)
       ,
       cuda_dm_(default_device_num, num_devices, local_rank, local_size)
 #endif

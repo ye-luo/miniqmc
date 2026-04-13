@@ -278,8 +278,5 @@ typedef QMCTraits::ValueType ValueType;
 typedef QMCTraits::QTFull::ValueType mValueType;
 
 template class DiracDeterminantRef<>;
-#if defined(ENABLE_CUDA)
-template class DiracDeterminantRef<DelayedUpdateCUDA<ValueType, mValueType>>;
-#endif
 
 } // namespace miniqmcreference

@@ -6,23 +6,37 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "IntelLLVM")
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 2021.3)
     message(FATAL_ERROR "Requires Intel oneAPI 2021.3 or higher!")
   endif()
-elseif(INTEL_ONEAPI_COMPILER_FOUND)
-  # in this case, the version string reported based on Clang, not accurate enough. just skip check.
 else()
-  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 19.0.0.20190206)
-    message(FATAL_ERROR "Requires Intel 19 update 3 (19.0.0.20190206) or higher!")
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 2021.1)
+    message(FATAL_ERROR "Requires Intel classic compiler 2021.1 or higher!")
   endif()
 endif()
 
 # Enable OpenMP
 if(QMC_OMP)
-  set(ENABLE_OPENMP 1)
-  if(CMAKE_CXX_COMPILER_ID MATCHES "IntelLLVM" OR INTEL_ONEAPI_COMPILER_FOUND)
+  if(CMAKE_CXX_COMPILER_ID MATCHES "IntelLLVM")
     if(ENABLE_OFFLOAD)
-      set(OFFLOAD_TARGET
-          "spir64"
-          CACHE STRING "Offload target architecture")
-      set(OPENMP_OFFLOAD_COMPILE_OPTIONS "-fopenmp-targets=${OFFLOAD_TARGET}")
+      if(OFFLOAD_ARCH OR QMC_GPU_ARCHS)
+        # for ahead-of-time compilation and linking
+        # if OFFLOAD_ARCH not defined, overwrite it with QMC_GPU_ARCHS
+        if(NOT OFFLOAD_ARCH AND QMC_GPU_ARCHS)
+          set(OFFLOAD_ARCH ${QMC_GPU_ARCHS})
+        endif()
+        if(OFFLOAD_ARCH MATCHES "^intel_gpu_")
+          set(OPENMP_OFFLOAD_COMPILE_OPTIONS "-fopenmp-targets=spir64_gen")
+          string(REGEX REPLACE "^intel_gpu_" "" INTEL_GPU_ARCH "${OFFLOAD_ARCH}")
+          set(OpenMP_OFFLOAD_LINKER_FLAGS "-Xs \"-device ${INTEL_GPU_ARCH}\"")
+        else()
+          message(FATAL_ERROR "Invalid Intel GPU architecture \"${OFFLOAD_ARCH}\"! Did you miss \"intel_gpu_\" prefix?")
+        endif()
+      else()
+        set(OFFLOAD_TARGET
+            "spir64"
+            CACHE STRING "Offload target architecture")
+        set(OPENMP_OFFLOAD_COMPILE_OPTIONS "-fopenmp-targets=${OFFLOAD_TARGET}")
+      endif()
+      # Select the intra-team reduction implementation using shared local memory.
+      set(OPENMP_OFFLOAD_COMPILE_OPTIONS "${OPENMP_OFFLOAD_COMPILE_OPTIONS} -mllvm -vpo-paropt-atomic-free-reduction-slm=true" )
     endif(ENABLE_OFFLOAD)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fiopenmp")
   else()
